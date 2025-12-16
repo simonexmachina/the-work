@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Work - Judge Your Neighbor Worksheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-md"></div>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <header class="text-center mb-8 pb-6 border-b-2 border-gray-200">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">The Work</h1>
+            <p class="text-lg text-gray-600">Judge Your Neighbor Worksheet</p>
+        </header>
+
+        <main>
+            <!-- List View -->
+            <div id="list-view" class="view">
+                <div class="flex gap-4 mb-6 flex-wrap">
+                    <button id="new-worksheet-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5">
+                        Create New Worksheet
+                    </button>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Your Worksheets</h2>
+                <div id="worksheets-list">
+                    <p class="text-center py-12 text-gray-500 italic">No worksheets yet. Create your first one to get started.</p>
+                </div>
+            </div>
+
+            <!-- Worksheet Form View -->
+            <div id="worksheet-view" class="view hidden">
+                <div class="flex gap-4 mb-6 flex-wrap">
+                    <button id="back-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                        ← Back to List
+                    </button>
+                    <button id="save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5">
+                        Save Worksheet
+                    </button>
+                </div>
+                <div id="worksheet-form-container"></div>
+            </div>
+
+            <!-- Worksheet Detail View -->
+            <div id="detail-view" class="view hidden">
+                <div class="flex gap-4 mb-6 flex-wrap">
+                    <button id="back-from-detail-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                        ← Back to List
+                    </button>
+                    <button id="edit-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                        Edit
+                    </button>
+                    <button id="delete-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                        Delete
+                    </button>
+                </div>
+                <div id="worksheet-detail"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

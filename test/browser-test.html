@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Tests - The Work</title>
+    <script src="https://cdn.jsdelivr.net/npm/mocha@10/mocha.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chai@4/chai.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fake-indexeddb@5/lib/fake-indexeddb-auto.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mocha@10/mocha.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+        }
+        #mocha {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>The Work - Browser Tests</h1>
+    <div id="mocha"></div>
+
+    <script>
+        mocha.setup('bdd');
+        const { expect } = chai;
+
+        // Test IndexedDB operations
+        describe('IndexedDB Operations', () => {
+            let db;
+            const DB_NAME = 'TheWorkDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'worksheets';
+
+            beforeEach((done) => {
+                // Clear and recreate database
+                const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+                deleteRequest.onsuccess = () => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                    request.onerror = () => done(request.error);
+                    request.onsuccess = () => {
+                        db = request.result;
+                        done();
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            const objectStore = db.createObjectStore(STORE_NAME, {
+                                keyPath: 'id',
+                                autoIncrement: true
+                            });
+                            objectStore.createIndex('date', 'date', { unique: false });
+                        }
+                    };
+                };
+            });
+
+            it('should create a database and object store', () => {
+                expect(db).to.exist;
+                expect(db.name).to.equal(DB_NAME);
+                expect(db.version).to.equal(DB_VERSION);
+                expect(db.objectStoreNames.contains(STORE_NAME)).to.be.true;
+            });
+
+            it('should save a worksheet', (done) => {
+                const worksheet = {
+                    situation: 'Test situation',
+                    person: 'Test person',
+                    date: new Date().toISOString()
+                };
+
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.add(worksheet);
+
+                request.onsuccess = () => {
+                    expect(request.result).to.exist;
+                    done();
+                };
+                request.onerror = () => done(request.error);
+            });
+
+            it('should retrieve a worksheet by ID', (done) => {
+                const worksheet = {
+                    situation: 'Test situation',
+                    person: 'Test person',
+                    date: new Date().toISOString()
+                };
+
+                // Save first
+                const transaction1 = db.transaction([STORE_NAME], 'readwrite');
+                const store1 = transaction1.objectStore(STORE_NAME);
+                const request1 = store1.add(worksheet);
+
+                request1.onsuccess = () => {
+                    const id = request1.result;
+                    
+                    // Then retrieve
+                    const transaction2 = db.transaction([STORE_NAME], 'readonly');
+                    const store2 = transaction2.objectStore(STORE_NAME);
+                    const request2 = store2.get(id);
+
+                    request2.onsuccess = () => {
+                        const retrieved = request2.result;
+                        expect(retrieved).to.exist;
+                        expect(retrieved.situation).to.equal(worksheet.situation);
+                        expect(retrieved.person).to.equal(worksheet.person);
+                        done();
+                    };
+                    request2.onerror = () => done(request2.error);
+                };
+                request1.onerror = () => done(request1.error);
+            });
+
+            it('should retrieve all worksheets', (done) => {
+                const worksheets = [
+                    { situation: 'Situation 1', date: new Date().toISOString() },
+                    { situation: 'Situation 2', date: new Date().toISOString() },
+                    { situation: 'Situation 3', date: new Date().toISOString() }
+                ];
+
+                let saved = 0;
+                worksheets.forEach((ws) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.add(ws);
+                    
+                    request.onsuccess = () => {
+                        saved++;
+                        if (saved === worksheets.length) {
+                            // Retrieve all
+                            const transaction2 = db.transaction([STORE_NAME], 'readonly');
+                            const store2 = transaction2.objectStore(STORE_NAME);
+                            const request2 = store2.getAll();
+
+                            request2.onsuccess = () => {
+                                expect(request2.result.length).to.equal(3);
+                                done();
+                            };
+                            request2.onerror = () => done(request2.error);
+                        }
+                    };
+                    request.onerror = () => done(request.error);
+                });
+            });
+
+            it('should delete a worksheet', (done) => {
+                const worksheet = {
+                    situation: 'To be deleted',
+                    date: new Date().toISOString()
+                };
+
+                // Save
+                const transaction1 = db.transaction([STORE_NAME], 'readwrite');
+                const store1 = transaction1.objectStore(STORE_NAME);
+                const request1 = store1.add(worksheet);
+
+                request1.onsuccess = () => {
+                    const id = request1.result;
+                    
+                    // Delete
+                    const transaction2 = db.transaction([STORE_NAME], 'readwrite');
+                    const store2 = transaction2.objectStore(STORE_NAME);
+                    const request2 = store2.delete(id);
+
+                    request2.onsuccess = () => {
+                        // Verify deletion
+                        const transaction3 = db.transaction([STORE_NAME], 'readonly');
+                        const store3 = transaction3.objectStore(STORE_NAME);
+                        const request3 = store3.get(id);
+
+                        request3.onsuccess = () => {
+                            expect(request3.result).to.be.undefined;
+                            done();
+                        };
+                        request3.onerror = () => done(request3.error);
+                    };
+                    request2.onerror = () => done(request2.error);
+                };
+                request1.onerror = () => done(request1.error);
+            });
+        });
+
+        // Test utility functions
+        describe('Utility Functions', () => {
+            it('should format dates correctly', () => {
+                const date = new Date('2023-12-25T10:30:00Z');
+                const formatted = date.toLocaleDateString();
+                expect(formatted).to.be.a('string');
+                expect(formatted.length).to.be.greaterThan(0);
+            });
+
+            it('should truncate long text', () => {
+                const longText = 'A'.repeat(150);
+                const truncated = longText.length > 100 
+                    ? longText.substring(0, 100) + '...' 
+                    : longText;
+                
+                expect(truncated.length).to.equal(103);
+                expect(truncated).to.include('...');
+            });
+
+            it('should not truncate short text', () => {
+                const shortText = 'Short text';
+                const truncated = shortText.length > 100 
+                    ? shortText.substring(0, 100) + '...' 
+                    : shortText;
+                
+                expect(truncated).to.equal(shortText);
+            });
+        });
+
+        mocha.run();
+    </script>
+</body>
+</html>
+
