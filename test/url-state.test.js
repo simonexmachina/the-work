@@ -10,7 +10,7 @@ describe('URL State Management', () => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost/',
       pretendToBeVisual: true,
-      resources: 'usable'
+      resources: 'usable',
     });
 
     window = dom.window;
@@ -105,11 +105,11 @@ describe('URL State Management', () => {
       expect(window.location.search).toBe('?view=list');
     });
 
-    it('should support popstate event', (done) => {
+    it('should support popstate event', done => {
       const state = { view: 'detail', id: '123' };
       window.history.pushState(state, '', '/?view=detail&id=123');
-      
-      window.addEventListener('popstate', (event) => {
+
+      window.addEventListener('popstate', event => {
         expect(event.state).toEqual(state);
         done();
       });
@@ -122,7 +122,7 @@ describe('URL State Management', () => {
       const initialURL = window.location.href;
       const state = { view: 'worksheet', id: '456' };
       window.history.pushState(state, '', '/?view=worksheet&id=456');
-      
+
       expect(window.location.href).not.toBe(initialURL);
       expect(window.location.search).toContain('view=worksheet');
       expect(window.location.search).toContain('id=456');
@@ -135,7 +135,7 @@ describe('URL State Management', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
       expect(state.view).toBe('list');
       expect(state.id).toBeNull();
@@ -146,7 +146,7 @@ describe('URL State Management', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
       expect(state.view).toBe('worksheet');
       expect(state.id).toBeNull();
@@ -157,7 +157,7 @@ describe('URL State Management', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
       expect(state.view).toBe('worksheet');
       expect(state.id).toBe(999);
@@ -168,11 +168,10 @@ describe('URL State Management', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
       expect(state.view).toBe('detail');
       expect(state.id).toBe(555);
     });
   });
 });
-

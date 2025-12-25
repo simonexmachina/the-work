@@ -9,12 +9,12 @@ describe('Sync Integration', () => {
   const DB_NAME = 'TheWorkDB';
   const DB_VERSION = 2; // Updated to use string IDs
   const STORE_NAME = 'worksheets';
-  
+
   // Helper to generate UUID for tests
   function generateId() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
   }
@@ -22,7 +22,7 @@ describe('Sync Integration', () => {
   beforeEach(async () => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost',
-      pretendToBeVisual: true
+      pretendToBeVisual: true,
     });
 
     window = dom.window;
@@ -42,7 +42,7 @@ describe('Sync Integration', () => {
     }
 
     // Delete existing database
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
       const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
       deleteRequest.onsuccess = () => resolve();
       deleteRequest.onerror = () => resolve();
@@ -56,12 +56,12 @@ describe('Sync Integration', () => {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
 
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = event => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           // Use string IDs, no autoIncrement
           const objectStore = db.createObjectStore(STORE_NAME, {
-            keyPath: 'id'
+            keyPath: 'id',
           });
           objectStore.createIndex('date', 'date', { unique: false });
         }
@@ -83,11 +83,11 @@ describe('Sync Integration', () => {
       if (!worksheet.id) {
         worksheet.id = generateId();
       }
-      
+
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.put(worksheet);
-      
+
       request.onsuccess = () => resolve(worksheet.id);
       request.onerror = () => reject(request.error);
     });
@@ -99,7 +99,7 @@ describe('Sync Integration', () => {
       const transaction = db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAll();
-      
+
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -107,18 +107,18 @@ describe('Sync Integration', () => {
 
   it('should save worksheet locally and sync to cloud', async () => {
     const mockDbService = {
-      saveWorksheet: vi.fn(() => Promise.resolve('cloud-id'))
+      saveWorksheet: vi.fn(() => Promise.resolve('cloud-id')),
     };
 
     const mockAuthService = {
       isAuthenticated: vi.fn(() => Promise.resolve(true)),
-      getUserId: vi.fn(() => Promise.resolve('test-user'))
+      getUserId: vi.fn(() => Promise.resolve('test-user')),
     };
 
     const worksheet = {
       situation: 'Test situation',
       date: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     // Save locally
@@ -134,9 +134,12 @@ describe('Sync Integration', () => {
     if (await mockAuthService.isAuthenticated()) {
       worksheet.id = localId;
       await mockDbService.saveWorksheet('test-user', worksheet);
-      expect(mockDbService.saveWorksheet).toHaveBeenCalledWith('test-user', expect.objectContaining({
-        situation: 'Test situation'
-      }));
+      expect(mockDbService.saveWorksheet).toHaveBeenCalledWith(
+        'test-user',
+        expect.objectContaining({
+          situation: 'Test situation',
+        })
+      );
     }
   });
 
@@ -146,7 +149,7 @@ describe('Sync Integration', () => {
       id: 'local-1',
       situation: 'Local worksheet',
       date: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z'
+      updatedAt: '2024-01-01T00:00:00.000Z',
     };
     await saveWorksheet(localWorksheet);
 
@@ -157,8 +160,8 @@ describe('Sync Integration', () => {
         situation: 'Remote worksheet',
         date: '2024-01-02T00:00:00.000Z',
         updatedAt: '2024-01-02T00:00:00.000Z',
-        userId: 'test-user'
-      }
+        userId: 'test-user',
+      },
     ];
 
     // Get local worksheets
@@ -195,7 +198,7 @@ describe('Sync Integration', () => {
       id: 'conflict-1',
       situation: 'Local version',
       date: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z'
+      updatedAt: '2024-01-01T00:00:00.000Z',
     };
     await saveWorksheet(localWorksheet);
 
@@ -204,7 +207,7 @@ describe('Sync Integration', () => {
       id: 'conflict-1',
       situation: 'Remote version (newer)',
       date: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-02T00:00:00.000Z'
+      updatedAt: '2024-01-02T00:00:00.000Z',
     };
 
     // Check timestamps
@@ -214,7 +217,7 @@ describe('Sync Integration', () => {
     if (remoteTime > localTime) {
       // Remote is newer - update local
       await saveWorksheet(remoteWorksheet);
-      
+
       const updated = await getAllWorksheets();
       const updatedWorksheet = updated.find(w => w.id === 'conflict-1');
       expect(updatedWorksheet.situation).toBe('Remote version (newer)');
@@ -227,7 +230,7 @@ describe('Sync Integration', () => {
     const worksheet = {
       situation: 'Offline worksheet',
       date: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     // Should save locally even when offline
@@ -241,7 +244,7 @@ describe('Sync Integration', () => {
     // When back online, should sync
     global.navigator.onLine = true;
     const mockDbService = {
-      saveWorksheet: vi.fn(() => Promise.resolve('synced-id'))
+      saveWorksheet: vi.fn(() => Promise.resolve('synced-id')),
     };
 
     if (global.navigator.onLine) {
@@ -257,17 +260,17 @@ describe('Sync Integration', () => {
       id: worksheetId,
       situation: 'To be deleted',
       date: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
     await saveWorksheet(worksheet);
 
     const mockDbService = {
-      deleteWorksheet: vi.fn(() => Promise.resolve())
+      deleteWorksheet: vi.fn(() => Promise.resolve()),
     };
 
     const mockAuthService = {
       isAuthenticated: vi.fn(() => Promise.resolve(true)),
-      getUserId: vi.fn(() => Promise.resolve('test-user'))
+      getUserId: vi.fn(() => Promise.resolve('test-user')),
     };
 
     // Delete locally
@@ -290,4 +293,3 @@ describe('Sync Integration', () => {
     }
   });
 });
-

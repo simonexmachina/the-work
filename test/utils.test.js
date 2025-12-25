@@ -20,20 +20,16 @@ describe('Utility Functions', () => {
   describe('Text truncation', () => {
     it('should truncate long text', () => {
       const longText = 'A'.repeat(150);
-      const truncated = longText.length > 100 
-        ? longText.substring(0, 100) + '...' 
-        : longText;
-      
+      const truncated = longText.length > 100 ? longText.substring(0, 100) + '...' : longText;
+
       expect(truncated.length).toBe(103);
       expect(truncated).toContain('...');
     });
 
     it('should not truncate short text', () => {
       const shortText = 'Short text';
-      const truncated = shortText.length > 100 
-        ? shortText.substring(0, 100) + '...' 
-        : shortText;
-      
+      const truncated = shortText.length > 100 ? shortText.substring(0, 100) + '...' : shortText;
+
       expect(truncated).toBe(shortText);
       expect(truncated.length).toBe(shortText.length);
     });
@@ -63,7 +59,7 @@ describe('Utility Functions', () => {
     it('should trim form field values', () => {
       const values = ['  test  ', '  another  ', 'normal'];
       const trimmed = values.map(v => v.trim());
-      
+
       expect(trimmed[0]).toBe('test');
       expect(trimmed[1]).toBe('another');
       expect(trimmed[2]).toBe('normal');
@@ -76,4 +72,3 @@ describe('Utility Functions', () => {
     });
   });
 });
-

@@ -14,7 +14,7 @@ describe('SyncService', () => {
   beforeEach(() => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost',
-      pretendToBeVisual: true
+      pretendToBeVisual: true,
     });
 
     window = dom.window;
@@ -27,39 +27,49 @@ describe('SyncService', () => {
     mockAuthService = createMockAuthService();
     mockAuthService.isAuthenticated = vi.fn(() => Promise.resolve(true));
     mockAuthService.getUserId = vi.fn(() => Promise.resolve('test-user-id'));
-    mockAuthService.getCurrentUser = vi.fn(() => Promise.resolve({
-      uid: 'test-user-id',
-      email: 'test@example.com'
-    }));
+    mockAuthService.getCurrentUser = vi.fn(() =>
+      Promise.resolve({
+        uid: 'test-user-id',
+        email: 'test@example.com',
+      })
+    );
 
     mockDbService = createMockDbService();
-    mockDbService.getUserWorksheets = vi.fn(() => Promise.resolve([
-      {
-        id: 'remote-1',
-        situation: 'Remote worksheet',
-        date: '2024-01-02T00:00:00.000Z',
-        updatedAt: '2024-01-02T00:00:00.000Z',
-        userId: 'test-user-id'
-      }
-    ]));
+    mockDbService.getUserWorksheets = vi.fn(() =>
+      Promise.resolve([
+        {
+          id: 'remote-1',
+          situation: 'Remote worksheet',
+          date: '2024-01-02T00:00:00.000Z',
+          updatedAt: '2024-01-02T00:00:00.000Z',
+          userId: 'test-user-id',
+        },
+      ])
+    );
 
     mockLocalDb = createMockLocalDb();
-    mockLocalDb.getAllWorksheets = vi.fn(() => Promise.resolve([
-      {
-        id: 'local-1', // Now using string IDs everywhere
-        situation: 'Local worksheet',
-        date: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z'
-      }
-    ]));
-    mockLocalDb.getWorksheetById = vi.fn((id) => Promise.resolve(
-      id === 'local-1' ? {
-        id: 'local-1',
-        situation: 'Local worksheet',
-        date: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z'
-      } : null
-    ));
+    mockLocalDb.getAllWorksheets = vi.fn(() =>
+      Promise.resolve([
+        {
+          id: 'local-1', // Now using string IDs everywhere
+          situation: 'Local worksheet',
+          date: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+        },
+      ])
+    );
+    mockLocalDb.getWorksheetById = vi.fn(id =>
+      Promise.resolve(
+        id === 'local-1'
+          ? {
+              id: 'local-1',
+              situation: 'Local worksheet',
+              date: '2024-01-01T00:00:00.000Z',
+              updatedAt: '2024-01-01T00:00:00.000Z',
+            }
+          : null
+      )
+    );
   });
 
   afterEach(() => {
@@ -126,13 +136,13 @@ describe('SyncService', () => {
     const localWorksheet = {
       id: 'conflict-1', // String ID
       situation: 'Local version',
-      updatedAt: '2024-01-01T00:00:00.000Z'
+      updatedAt: '2024-01-01T00:00:00.000Z',
     };
 
     const remoteWorksheet = {
       id: 'conflict-1', // String ID
       situation: 'Remote version',
-      updatedAt: '2024-01-02T00:00:00.000Z'
+      updatedAt: '2024-01-02T00:00:00.000Z',
     };
 
     const localTime = new Date(localWorksheet.updatedAt);
@@ -153,7 +163,7 @@ describe('SyncService', () => {
     const worksheet = {
       id: 'test-id-1', // String ID
       situation: 'Test',
-      updatedAt: '2024-01-01T00:00:00.000Z'
+      updatedAt: '2024-01-01T00:00:00.000Z',
     };
 
     const isAuthenticated = await mockAuthService.isAuthenticated();
@@ -172,11 +182,11 @@ describe('SyncService', () => {
 
   it('should process pending syncs when coming back online', async () => {
     const pendingSyncs = [
-      { type: 'upload', data: { id: 'pending-1', situation: 'Pending' } } // String ID
+      { type: 'upload', data: { id: 'pending-1', situation: 'Pending' } }, // String ID
     ];
 
     global.navigator.onLine = true;
-    if (global.navigator.onLine && await mockAuthService.isAuthenticated()) {
+    if (global.navigator.onLine && (await mockAuthService.isAuthenticated())) {
       for (const sync of pendingSyncs) {
         if (sync.type === 'upload') {
           await mockDbService.saveWorksheet('test-user-id', sync.data);
@@ -186,4 +196,3 @@ describe('SyncService', () => {
     }
   });
 });
-

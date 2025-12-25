@@ -14,7 +14,7 @@ describe('App Functionality', () => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost',
       pretendToBeVisual: true,
-      resources: 'usable'
+      resources: 'usable',
     });
 
     window = dom.window;
@@ -147,7 +147,7 @@ describe('App Functionality', () => {
         situation: 'Test situation. This is a longer description.',
         person: 'Test person',
         date: new Date().toISOString(),
-        statements: []
+        statements: [],
       };
 
       // Replicate getSituationPreview logic
@@ -200,8 +200,8 @@ describe('App Functionality', () => {
         statements: [
           { statement: 'First statement text' },
           { statement: 'Second statement text' },
-          { statement: 'Third statement text' }
-        ]
+          { statement: 'Third statement text' },
+        ],
       };
 
       const fullText = (worksheet.situation || worksheet.person || '').trim();
@@ -257,7 +257,7 @@ describe('App Functionality', () => {
       const worksheet = {
         id: 'test-id-3',
         situation: 'Situation without statements.',
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
       };
 
       const fullText = (worksheet.situation || worksheet.person || '').trim();
@@ -300,4 +300,3 @@ describe('App Functionality', () => {
     });
   });
 });
-

@@ -11,7 +11,7 @@ describe('FirebaseAuthService', () => {
   beforeEach(() => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost',
-      pretendToBeVisual: true
+      pretendToBeVisual: true,
     });
 
     window = dom.window;
@@ -22,20 +22,20 @@ describe('FirebaseAuthService', () => {
     // Mock Firebase Auth
     mockAuth = {
       currentUser: null,
-      onAuthStateChanged: vi.fn((callback) => {
+      onAuthStateChanged: vi.fn(callback => {
         // Store callback for testing
         mockAuth._authStateCallback = callback;
         return () => {}; // Return unsubscribe function
       }),
       createUserWithEmailAndPassword: vi.fn(),
       signInWithEmailAndPassword: vi.fn(),
-      signOut: vi.fn()
+      signOut: vi.fn(),
     };
 
     mockFirebase = {
       apps: [],
       initializeApp: vi.fn(() => ({})),
-      auth: vi.fn(() => mockAuth)
+      auth: vi.fn(() => mockAuth),
     };
 
     global.firebase = mockFirebase;
@@ -53,7 +53,7 @@ describe('FirebaseAuthService', () => {
     const config = {
       apiKey: 'test-key',
       authDomain: 'test.firebaseapp.com',
-      projectId: 'test-project'
+      projectId: 'test-project',
     };
 
     // Since we can't easily load the class, we'll test the expected behavior
@@ -64,11 +64,11 @@ describe('FirebaseAuthService', () => {
     const user = {
       uid: 'test-uid',
       email: 'test@example.com',
-      getIdToken: vi.fn(() => Promise.resolve('test-token'))
+      getIdToken: vi.fn(() => Promise.resolve('test-token')),
     };
 
     mockAuth.createUserWithEmailAndPassword.mockResolvedValue({
-      user
+      user,
     });
 
     // Test would verify sign up creates user and stores auth state
@@ -79,11 +79,11 @@ describe('FirebaseAuthService', () => {
     const user = {
       uid: 'test-uid',
       email: 'test@example.com',
-      getIdToken: vi.fn(() => Promise.resolve('test-token'))
+      getIdToken: vi.fn(() => Promise.resolve('test-token')),
     };
 
     mockAuth.signInWithEmailAndPassword.mockResolvedValue({
-      user
+      user,
     });
 
     expect(mockAuth.signInWithEmailAndPassword).toBeDefined();
@@ -99,4 +99,3 @@ describe('FirebaseAuthService', () => {
     expect(true).toBe(true);
   });
 });
-

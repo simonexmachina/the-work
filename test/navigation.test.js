@@ -11,7 +11,7 @@ describe('Navigation and URL State', () => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost/',
       pretendToBeVisual: true,
-      resources: 'usable'
+      resources: 'usable',
     });
 
     window = dom.window;
@@ -36,7 +36,7 @@ describe('Navigation and URL State', () => {
       params.set('view', 'list');
       const url = `/?${params.toString()}`;
       window.history.pushState({ view: 'list' }, '', url);
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       expect(urlParams.get('view')).toBe('list');
     });
@@ -46,7 +46,7 @@ describe('Navigation and URL State', () => {
       params.set('view', 'worksheet');
       const url = `/?${params.toString()}`;
       window.history.pushState({ view: 'worksheet' }, '', url);
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       expect(urlParams.get('view')).toBe('worksheet');
       expect(urlParams.get('id')).toBeNull();
@@ -58,7 +58,7 @@ describe('Navigation and URL State', () => {
       params.set('id', '123');
       const url = `/?${params.toString()}`;
       window.history.pushState({ view: 'worksheet', id: '123' }, '', url);
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       expect(urlParams.get('view')).toBe('worksheet');
       expect(urlParams.get('id')).toBe('123');
@@ -70,7 +70,7 @@ describe('Navigation and URL State', () => {
       params.set('id', '456');
       const url = `/?${params.toString()}`;
       window.history.pushState({ view: 'detail', id: '456' }, '', url);
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       expect(urlParams.get('view')).toBe('detail');
       expect(urlParams.get('id')).toBe('456');
@@ -83,9 +83,9 @@ describe('Navigation and URL State', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
-      
+
       expect(state.view).toBe('list');
       expect(state.id).toBeNull();
     });
@@ -95,9 +95,9 @@ describe('Navigation and URL State', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
-      
+
       expect(state.view).toBe('worksheet');
       expect(state.id).toBeNull();
     });
@@ -107,9 +107,9 @@ describe('Navigation and URL State', () => {
       const params = new URLSearchParams(window.location.search);
       const state = {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') ? parseInt(params.get('id')) : null,
       };
-      
+
       expect(state.view).toBe('detail');
       expect(state.id).toBe(789);
     });
@@ -118,7 +118,7 @@ describe('Navigation and URL State', () => {
       window.history.pushState({}, '', '/?view=invalid');
       const params = new URLSearchParams(window.location.search);
       const view = params.get('view') || 'list';
-      
+
       // Should default to list if invalid
       const validViews = ['list', 'worksheet', 'detail'];
       const finalView = validViews.includes(view) ? view : 'list';
@@ -130,7 +130,7 @@ describe('Navigation and URL State', () => {
       const params = new URLSearchParams(window.location.search);
       const idParam = params.get('id');
       const id = idParam ? parseInt(idParam) : null;
-      
+
       // parseInt('abc') returns NaN
       const isNaNResult = idParam && isNaN(parseInt(idParam));
       expect(isNaNResult).toBe(true);
@@ -141,43 +141,43 @@ describe('Navigation and URL State', () => {
   });
 
   describe('Browser Navigation', () => {
-    it('should handle browser back button', (done) => {
+    it('should handle browser back button', done => {
       // Initial state
       window.history.pushState({ view: 'list' }, '', '/?view=list');
-      
+
       // Navigate forward
       window.history.pushState({ view: 'worksheet' }, '', '/?view=worksheet');
-      
+
       // Set up popstate listener
-      window.addEventListener('popstate', (event) => {
+      window.addEventListener('popstate', event => {
         if (event.state) {
           expect(event.state.view).toBe('list');
           done();
         }
       });
-      
+
       // Simulate back button
       window.history.back();
     });
 
-    it('should handle browser forward button', (done) => {
+    it('should handle browser forward button', done => {
       // Initial state
       window.history.pushState({ view: 'list' }, '', '/?view=list');
-      
+
       // Navigate forward
       window.history.pushState({ view: 'worksheet' }, '', '/?view=worksheet');
-      
+
       // Go back
       window.history.back();
-      
+
       // Set up popstate listener for forward
-      window.addEventListener('popstate', (event) => {
+      window.addEventListener('popstate', event => {
         if (event.state && event.state.view === 'worksheet') {
           expect(event.state.view).toBe('worksheet');
           done();
         }
       });
-      
+
       // Simulate forward button
       window.history.forward();
     });
@@ -203,7 +203,7 @@ describe('Navigation and URL State', () => {
       params.set('view', 'detail');
       params.set('id', '123');
       const url = `/?${params.toString()}`;
-      
+
       const urlParams = new URLSearchParams(url.split('?')[1]);
       expect(urlParams.get('view')).toBe('detail');
       expect(urlParams.get('id')).toBe('123');
@@ -218,4 +218,3 @@ describe('Navigation and URL State', () => {
     });
   });
 });
-

@@ -5,12 +5,16 @@ This document describes the test coverage for the cross-device sync functionalit
 ## Test Files
 
 ### 1. `auth-service.test.js`
+
 Tests for the base `AuthService` class interface.
+
 - Basic authentication state management
 - Storage and retrieval of auth state
 
 ### 2. `firebase-auth.test.js`
+
 Tests for `FirebaseAuthService` implementation.
+
 - Firebase initialization
 - Sign up functionality
 - Sign in functionality
@@ -19,7 +23,9 @@ Tests for `FirebaseAuthService` implementation.
 - Error handling
 
 ### 3. `firebase-db.test.js`
+
 Tests for `FirebaseDbService` implementation.
+
 - Firestore initialization
 - Getting user worksheets
 - Saving worksheets (create and update)
@@ -27,7 +33,9 @@ Tests for `FirebaseDbService` implementation.
 - Real-time subscriptions
 
 ### 4. `sync-service.test.js`
+
 Tests for `SyncService` core functionality.
+
 - Service initialization
 - Initial sync logic
 - Uploading local-only worksheets
@@ -38,7 +46,9 @@ Tests for `SyncService` core functionality.
 - Processing pending syncs when coming back online
 
 ### 5. `sync-integration.test.js`
+
 End-to-end integration tests for the sync flow.
+
 - Saving worksheet locally and syncing to cloud
 - Merging local and remote worksheets on initial sync
 - Conflict resolution with timestamps
@@ -48,7 +58,9 @@ End-to-end integration tests for the sync flow.
 ## Test Helpers
 
 ### `sync-helpers.js`
+
 Utility functions for creating mock services:
+
 - `createMockAuthService()` - Creates a mock authentication service
 - `createMockDbService()` - Creates a mock database service
 - `createMockLocalDb()` - Creates a mock local database interface
@@ -75,16 +87,19 @@ npm run test:coverage
 The sync functionality tests cover:
 
 ✅ **Authentication**
+
 - Sign up, sign in, sign out
 - Auth state management
 - Token handling
 
 ✅ **Database Operations**
+
 - CRUD operations on Firestore
 - Real-time subscriptions
 - Query operations
 
 ✅ **Sync Logic**
+
 - Initial sync on login
 - Bidirectional sync
 - Conflict resolution
@@ -92,6 +107,7 @@ The sync functionality tests cover:
 - Queue management
 
 ✅ **Integration**
+
 - Full sync flow
 - Local and remote data merging
 - Error handling
@@ -127,4 +143,3 @@ Potential areas for additional test coverage:
 - [ ] Concurrent modification handling
 - [ ] Token refresh scenarios
 - [ ] Security rule validation
-

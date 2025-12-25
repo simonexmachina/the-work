@@ -14,7 +14,7 @@ describe('FirebaseDbService', () => {
   beforeEach(() => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
       url: 'http://localhost',
-      pretendToBeVisual: true
+      pretendToBeVisual: true,
     });
 
     window = dom.window;
@@ -41,13 +41,12 @@ describe('FirebaseDbService', () => {
 
   it('should get user worksheets', async () => {
     const userId = 'test-user-id';
-    
+
     // Simulate the service calling firestore
     const collection = mockFirebase.firestore();
-    const query = collection.where('userId', '==', userId)
-      .orderBy('updatedAt', 'desc');
+    const query = collection.where('userId', '==', userId).orderBy('updatedAt', 'desc');
     const snapshot = await query.get();
-    
+
     expect(mockFirestore).toHaveBeenCalled();
     expect(collection.where).toHaveBeenCalledWith('userId', '==', userId);
     expect(query.orderBy).toHaveBeenCalledWith('updatedAt', 'desc');
@@ -61,16 +60,19 @@ describe('FirebaseDbService', () => {
       id: 'test-id',
       situation: 'Test situation',
       date: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z'
+      updatedAt: '2024-01-01T00:00:00.000Z',
     };
 
     const collection = mockFirebase.firestore();
     const docRef = collection.doc(worksheet.id);
-    await docRef.set({
-      ...worksheet,
-      userId,
-      syncedAt: expect.any(String)
-    }, { merge: true });
+    await docRef.set(
+      {
+        ...worksheet,
+        userId,
+        syncedAt: expect.any(String),
+      },
+      { merge: true }
+    );
 
     expect(mockFirestore).toHaveBeenCalled();
     expect(collection.doc).toHaveBeenCalledWith(worksheet.id);
@@ -82,14 +84,14 @@ describe('FirebaseDbService', () => {
     const worksheet = {
       situation: 'Test situation',
       date: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z'
+      updatedAt: '2024-01-01T00:00:00.000Z',
     };
 
     const collection = mockFirebase.firestore();
     const docRef = await collection.add({
       ...worksheet,
       userId,
-      syncedAt: expect.any(String)
+      syncedAt: expect.any(String),
     });
 
     expect(mockFirestore).toHaveBeenCalled();
@@ -104,7 +106,7 @@ describe('FirebaseDbService', () => {
     const collection = mockFirebase.firestore();
     const docRef = collection.doc(worksheetId);
     const doc = await docRef.get();
-    
+
     if (doc.exists && doc.data().userId === userId) {
       await docRef.delete();
     }
@@ -119,8 +121,7 @@ describe('FirebaseDbService', () => {
     const callback = vi.fn();
 
     const collection = mockFirebase.firestore();
-    const query = collection.where('userId', '==', userId)
-      .orderBy('updatedAt', 'desc');
+    const query = collection.where('userId', '==', userId).orderBy('updatedAt', 'desc');
     const unsubscribe = query.onSnapshot(callback);
 
     // Wait for snapshot
@@ -132,4 +133,3 @@ describe('FirebaseDbService', () => {
     expect(typeof unsubscribe).toBe('function');
   });
 });
-

@@ -34,11 +34,11 @@ describe('IndexedDB Operations', () => {
         resolve(db);
       };
 
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = event => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const objectStore = db.createObjectStore(STORE_NAME, {
-            keyPath: 'id'
+            keyPath: 'id',
           });
           objectStore.createIndex('date', 'date', { unique: false });
         }
@@ -58,7 +58,7 @@ describe('IndexedDB Operations', () => {
       id: 'test-id-1',
       situation: 'Test situation',
       person: 'Test person',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
 
     return new Promise((resolve, reject) => {
@@ -79,7 +79,7 @@ describe('IndexedDB Operations', () => {
       id: 'test-id-2',
       situation: 'Test situation',
       person: 'Test person',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
 
     // First save
@@ -111,7 +111,7 @@ describe('IndexedDB Operations', () => {
     const worksheets = [
       { id: 'test-id-3', situation: 'Situation 1', date: new Date().toISOString() },
       { id: 'test-id-4', situation: 'Situation 2', date: new Date().toISOString() },
-      { id: 'test-id-5', situation: 'Situation 3', date: new Date().toISOString() }
+      { id: 'test-id-5', situation: 'Situation 3', date: new Date().toISOString() },
     ];
 
     // Save all
@@ -142,7 +142,7 @@ describe('IndexedDB Operations', () => {
     const worksheet = {
       id: 'test-id-6',
       situation: 'Original situation',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
 
     // Save
@@ -180,7 +180,7 @@ describe('IndexedDB Operations', () => {
     const worksheet = {
       id: 'test-id-7',
       situation: 'To be deleted',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
 
     // Save
@@ -213,4 +213,3 @@ describe('IndexedDB Operations', () => {
     expect(retrieved).toBeUndefined();
   });
 });
-

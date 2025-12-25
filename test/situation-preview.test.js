@@ -3,29 +3,29 @@ import { describe, it, expect } from 'vitest';
 // Test the getSituationPreview logic
 // Since the function isn't exported, we'll replicate its logic for testing
 function getSituationPreview(worksheet) {
-    const fullText = (worksheet.situation || worksheet.person || '').trim();
-    if (!fullText) {
-        return 'No content';
-    }
+  const fullText = (worksheet.situation || worksheet.person || '').trim();
+  if (!fullText) {
+    return 'No content';
+  }
 
-    // Find end of first sentence (., !, or ? followed by space or end of string)
-    const sentenceEndMatch = fullText.match(/[.!?](\s|$)/);
-    const sentenceEndIndex = sentenceEndMatch ? sentenceEndMatch.index + 1 : fullText.length;
+  // Find end of first sentence (., !, or ? followed by space or end of string)
+  const sentenceEndMatch = fullText.match(/[.!?](\s|$)/);
+  const sentenceEndIndex = sentenceEndMatch ? sentenceEndMatch.index + 1 : fullText.length;
 
-    // Take up to the end of the first sentence
-    let previewBase = fullText.slice(0, sentenceEndIndex);
+  // Take up to the end of the first sentence
+  let previewBase = fullText.slice(0, sentenceEndIndex);
 
-    // Enforce 90 character limit
-    let preview = previewBase.length > 90 ? previewBase.slice(0, 90) : previewBase;
+  // Enforce 90 character limit
+  let preview = previewBase.length > 90 ? previewBase.slice(0, 90) : previewBase;
 
-    const wasTruncatedBySentence = sentenceEndIndex < fullText.length;
-    const wasTruncatedByLength = previewBase.length > 90;
+  const wasTruncatedBySentence = sentenceEndIndex < fullText.length;
+  const wasTruncatedByLength = previewBase.length > 90;
 
-    if (wasTruncatedBySentence || wasTruncatedByLength) {
-        preview = preview.trimEnd() + '...';
-    }
+  if (wasTruncatedBySentence || wasTruncatedByLength) {
+    preview = preview.trimEnd() + '...';
+  }
 
-    return preview;
+  return preview;
 }
 
 describe('getSituationPreview', () => {
@@ -155,4 +155,3 @@ describe('getSituationPreview', () => {
     });
   });
 });
-
