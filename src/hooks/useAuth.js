@@ -31,7 +31,7 @@ export function useAuth() {
           setAuthService(authServiceInstance);
 
           // Listen for auth state changes
-          const unsubscribe = authServiceInstance.addListener((event, data) => {
+          const unsubscribe = authServiceInstance.addListener((event, _data) => {
             if (mounted) {
               if (event === 'signin') {
                 authServiceInstance.getCurrentUser().then(u => {

@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { JSDOM } from 'jsdom';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import the app functions - we'll need to expose them or test them indirectly
 // Since app.js uses module-level code, we'll test IndexedDB operations directly
@@ -17,7 +16,7 @@ describe('IndexedDB Operations', () => {
     }
 
     // Delete existing database
-    await new Promise((resolve, reject) => {
+    await new Promise(resolve => {
       const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
       deleteRequest.onsuccess = () => resolve();
       deleteRequest.onerror = () => resolve(); // Ignore errors if DB doesn't exist

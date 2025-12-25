@@ -6,7 +6,6 @@ describe('Textarea Height Persistence', () => {
   let dom;
   let document;
   let window;
-  let indexedDB;
 
   beforeEach(async () => {
     // Create a fresh JSDOM instance
@@ -32,7 +31,6 @@ describe('Textarea Height Persistence', () => {
 
     window = dom.window;
     document = window.document;
-    indexedDB = global.indexedDB;
 
     // Set up globals
     global.window = window;

@@ -390,9 +390,9 @@ function renderStatementGroup(num) {
             <div class="mt-2 text-sm text-gray-600 bg-gray-50 border-l-4 border-blue-200 rounded p-3">
                 <p class="font-semibold mb-1">Common turnarounds to explore:</p>
                 <ul class="list-disc list-inside space-y-1">
-                    <li><span class="font-medium">To the opposite</span> – "They don\'t listen to me" → "They do listen to me."</li>
-                    <li><span class="font-medium">To yourself</span> – "They don\'t listen to me" → "I don\'t listen to me."</li>
-                    <li><span class="font-medium">To them</span> – "They don\'t listen to me" → "I don\'t listen to them."</li>
+                    <li><span class="font-medium">To the opposite</span> – "They don't listen to me" → "They do listen to me."</li>
+                    <li><span class="font-medium">To yourself</span> – "They don't listen to me" → "I don't listen to me."</li>
+                    <li><span class="font-medium">To them</span> – "They don't listen to me" → "I don't listen to them."</li>
                 </ul>
                 <p class="mt-2">Write several genuine examples for each turnaround that feel true to you.</p>
             </div>
@@ -1148,7 +1148,7 @@ async function initializeSync() {
     });
 
     // Listen for auth state changes
-    authService.addListener((event, data) => {
+    authService.addListener((event, _data) => {
       if (event === 'signin') {
         updateAuthUI();
         syncService.startSync();

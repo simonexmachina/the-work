@@ -4,7 +4,6 @@ import { JSDOM } from 'jsdom';
 describe('FirebaseAuthService', () => {
   let dom;
   let window;
-  let FirebaseAuthService;
   let mockFirebase;
   let mockAuth;
 
@@ -50,12 +49,6 @@ describe('FirebaseAuthService', () => {
   });
 
   it('should initialize Firebase when constructed', async () => {
-    const config = {
-      apiKey: 'test-key',
-      authDomain: 'test.firebaseapp.com',
-      projectId: 'test-project',
-    };
-
     // Since we can't easily load the class, we'll test the expected behavior
     expect(mockFirebase.initializeApp).toBeDefined();
   });
@@ -99,3 +92,4 @@ describe('FirebaseAuthService', () => {
     expect(true).toBe(true);
   });
 });
+

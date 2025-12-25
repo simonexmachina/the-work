@@ -22,6 +22,7 @@ export default [
         },
       },
       globals: {
+        // Browser globals
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
@@ -33,9 +34,27 @@ export default [
         fetch: 'readonly',
         Promise: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         localStorage: 'readonly',
         indexedDB: 'readonly',
         IDBKeyRange: 'readonly',
+        FormData: 'readonly',
+        ResizeObserver: 'readonly',
+        confirm: 'readonly',
+        alert: 'readonly',
+        // Node globals
+        process: 'readonly',
+        global: 'readonly',
+        // Vitest globals
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
       },
     },
     rules: {
@@ -43,6 +62,14 @@ export default [
       'react/jsx-uses-vars': 'error',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      'no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
     settings: {
       react: {

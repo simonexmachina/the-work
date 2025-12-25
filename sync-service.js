@@ -317,19 +317,19 @@ export class SyncService {
     throw new Error('getAllLocalWorksheets must be implemented');
   }
 
-  async getLocalWorksheetById(id) {
+  async getLocalWorksheetById(_id) {
     throw new Error('getLocalWorksheetById must be implemented');
   }
 
-  async saveLocalWorksheet(worksheet) {
+  async saveLocalWorksheet(_worksheet) {
     throw new Error('saveLocalWorksheet must be implemented');
   }
 
-  async updateLocalWorksheet(worksheet) {
+  async updateLocalWorksheet(_worksheet) {
     throw new Error('updateLocalWorksheet must be implemented');
   }
 
-  async deleteLocalWorksheet(id) {
+  async deleteLocalWorksheet(_id) {
     throw new Error('deleteLocalWorksheet must be implemented');
   }
 }

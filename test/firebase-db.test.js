@@ -7,9 +7,6 @@ describe('FirebaseDbService', () => {
   let window;
   let mockFirebase;
   let mockFirestore;
-  let mockCollection;
-  let mockDoc;
-  let mockQuery;
 
   beforeEach(() => {
     dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
@@ -23,9 +20,6 @@ describe('FirebaseDbService', () => {
     // Create mock Firebase using helper
     mockFirebase = createMockFirebase();
     mockFirestore = mockFirebase._mocks.firestore;
-    mockCollection = mockFirebase._mocks.collection;
-    mockQuery = mockFirebase._mocks.query;
-    mockDoc = mockFirebase._mocks.doc;
 
     global.firebase = mockFirebase;
   });
@@ -133,3 +127,4 @@ describe('FirebaseDbService', () => {
     expect(typeof unsubscribe).toBe('function');
   });
 });
+

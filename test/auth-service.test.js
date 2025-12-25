@@ -20,11 +20,11 @@ class AuthService {
     }
   }
 
-  async signUp(email, password) {
+  async signUp(_email, _password) {
     throw new Error('signUp must be implemented by concrete auth service');
   }
 
-  async signIn(email, password) {
+  async signIn(_email, _password) {
     throw new Error('signIn must be implemented by concrete auth service');
   }
 

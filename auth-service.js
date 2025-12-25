@@ -37,7 +37,7 @@ export class AuthService {
    * @param {string} password - User password
    * @returns {Promise<Object>} User object
    */
-  async signUp(email, password) {
+  async signUp(_email, _password) {
     throw new Error('signUp must be implemented by concrete auth service');
   }
 
@@ -47,7 +47,7 @@ export class AuthService {
    * @param {string} password - User password
    * @returns {Promise<Object>} User object
    */
-  async signIn(email, password) {
+  async signIn(_email, _password) {
     throw new Error('signIn must be implemented by concrete auth service');
   }
 

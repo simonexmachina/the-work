@@ -47,7 +47,7 @@ export function AuthSection({ onSignIn, onSignUp }) {
       }
       setEmail('');
       setPassword('');
-    } catch (error) {
+    } catch (_error) {
       // Error handling is done in parent
     }
   };

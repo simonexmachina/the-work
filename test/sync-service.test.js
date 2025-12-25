@@ -6,7 +6,6 @@ import { createMockAuthService, createMockDbService, createMockLocalDb } from '.
 describe('SyncService', () => {
   let dom;
   let window;
-  let SyncService;
   let mockAuthService;
   let mockDbService;
   let mockLocalDb;
