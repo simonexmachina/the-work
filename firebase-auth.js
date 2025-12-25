@@ -18,11 +18,9 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { AuthService } from './auth-service.js';
 
-export class FirebaseAuthService extends AuthService {
+export class FirebaseAuthService {
   constructor(firebaseConfig) {
-    super();
     this.config = firebaseConfig;
     this.auth = null;
     this.app = null;
