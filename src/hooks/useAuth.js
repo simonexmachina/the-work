@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FirebaseAuthService } from '../../firebase-auth.js';
+import { FirebaseAuthService } from '../services/firebase-auth.js';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyC1nmSSaOSZJVqI9tdIGBDGkiC1asRec5s',

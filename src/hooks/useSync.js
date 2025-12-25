@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SyncService } from '../../sync-service.js';
-import { FirebaseDbService } from '../../firebase-db.js';
+import { SyncService } from '../services/sync-service.js';
+import { FirebaseDbService } from '../services/firebase-db.js';
 import {
   getAllWorksheets,
   getWorksheetById,
