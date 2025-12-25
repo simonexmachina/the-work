@@ -1,9 +1,38 @@
+import { FirebaseAuthService } from './firebase-auth.js';
+import { FirebaseDbService } from './firebase-db.js';
+import { SyncService } from './sync-service.js';
+
+// Firebase Configuration
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC1nmSSaOSZJVqI9tdIGBDGkiC1asRec5s",
+    authDomain: "the-work-46755.firebaseapp.com",
+    projectId: "the-work-46755",
+    storageBucket: "the-work-46755.firebasestorage.app",
+    messagingSenderId: "792441404750",
+    appId: "1:792441404750:web:fbebcb49f6fce10fbfb21f"
+};
+
+// UUID Generation for client-side IDs
+function generateId() {
+    // Generate a UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 // IndexedDB setup
 const DB_NAME = 'TheWorkDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped for string ID migration
 const STORE_NAME = 'worksheets';
 
 let db = null;
+
+// Sync service variables
+let syncService = null;
+let authService = null;
+let dbService = null;
 
 // Notification system
 function showNotification(message, type = 'success', duration = 5000) {
@@ -70,12 +99,70 @@ function initDB() {
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const objectStore = db.createObjectStore(STORE_NAME, {
-                    keyPath: 'id',
-                    autoIncrement: true
-                });
-                objectStore.createIndex('date', 'date', { unique: false });
+            const transaction = event.target.transaction;
+            const oldVersion = event.oldVersion;
+
+            // Version 1: Initial schema with numeric auto-increment IDs
+            if (oldVersion < 1) {
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    const objectStore = db.createObjectStore(STORE_NAME, {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    objectStore.createIndex('date', 'date', { unique: false });
+                }
+            }
+
+            // Version 2: Migrate to string IDs
+            if (oldVersion < 2) {
+                console.log('Migrating database from version', oldVersion, 'to version 2...');
+                
+                // Get existing data - must complete synchronously within the transaction
+                const oldStore = transaction.objectStore(STORE_NAME);
+                const getAllRequest = oldStore.getAll();
+                
+                // Handle migration completion
+                getAllRequest.onsuccess = () => {
+                    const allData = getAllRequest.result;
+                    console.log('Found', allData.length, 'worksheets to migrate');
+
+                    // Delete old store
+                    db.deleteObjectStore(STORE_NAME);
+
+                    // Create new store with string IDs (no autoIncrement)
+                    const newStore = db.createObjectStore(STORE_NAME, {
+                        keyPath: 'id'
+                    });
+                    newStore.createIndex('date', 'date', { unique: false });
+
+                    // Migrate data - convert numeric IDs to strings or generate new UUIDs
+                    for (const worksheet of allData) {
+                        const migratedWorksheet = { ...worksheet };
+                        
+                        // If it has a firebaseId, use that as the new id
+                        if (migratedWorksheet.firebaseId) {
+                            migratedWorksheet.id = migratedWorksheet.firebaseId;
+                            delete migratedWorksheet.firebaseId;
+                        } else if (typeof migratedWorksheet.id === 'number') {
+                            // Convert numeric ID to prefixed string to avoid collisions
+                            migratedWorksheet.id = `local_${migratedWorksheet.id}`;
+                        } else if (!migratedWorksheet.id) {
+                            // Generate new UUID if somehow missing
+                            migratedWorksheet.id = generateId();
+                        }
+                        
+                        // Remove any remaining firebaseId fields
+                        delete migratedWorksheet.firebaseId;
+                        
+                        newStore.add(migratedWorksheet);
+                    }
+
+                    console.log('Migration complete! All worksheets now have string IDs.');
+                };
+                
+                getAllRequest.onerror = () => {
+                    console.error('Error loading worksheets for migration:', getAllRequest.error);
+                };
             }
         };
     });
@@ -129,8 +216,19 @@ function executeRequest(request) {
 async function dbOperation(mode, operation) {
     await ensureDB();
     const transaction = createTransaction(mode);
+    
+    // Handle transaction errors
+    transaction.onerror = (event) => {
+        console.error('Transaction error:', event.target.error);
+    };
+    
     const store = getStore(transaction);
     const request = operation(store);
+    
+    if (!request) {
+        throw new Error('Operation did not return a valid IDBRequest');
+    }
+    
     return executeRequest(request);
 }
 
@@ -138,45 +236,115 @@ async function dbOperation(mode, operation) {
 async function saveWorksheet(worksheetData) {
     const worksheet = {
         ...worksheetData,
-        date: new Date().toISOString(),
+        date: worksheetData.date || new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
 
-    const result = await dbOperation('readwrite', (store) => {
-        // Use add() for new records (no id), put() for updates (has id)
-        return worksheet.id ? store.put(worksheet) : store.add(worksheet);
+    // Generate ID if this is a new worksheet
+    if (!worksheet.id) {
+        worksheet.id = generateId();
+    }
+
+    // Save to IndexedDB first (for offline support)
+    await dbOperation('readwrite', (store) => {
+        return store.put(worksheet); // put() works for both create and update
     });
 
-    // Return the ID (either the new auto-generated ID or the existing ID)
-    return worksheet.id || result;
+    // Sync to cloud if sync service is available and user is authenticated
+    if (syncService && authService && await authService.isAuthenticated()) {
+        try {
+            await syncService.syncWorksheetToCloud(worksheet);
+        } catch (error) {
+            console.error('Error syncing to cloud:', error);
+            // Don't fail the save - it's saved locally and will sync later
+        }
+    }
+
+    return worksheet.id;
 }
 
-// Get all worksheets from IndexedDB
+// Get all worksheets from IndexedDB (excluding deleted ones)
 async function getAllWorksheets() {
-    const rawWorksheets = await dbOperation('readonly', (store) => {
-        return store.getAll();
-    });
+    try {
+        const rawWorksheets = await dbOperation('readonly', (store) => {
+            return store.getAll();
+        });
 
-    const worksheets = rawWorksheets.map(normalizeWorksheet);
+        if (!rawWorksheets || rawWorksheets.length === 0) {
+            return [];
+        }
 
-    // Sort by date descending
-    return worksheets.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const worksheets = rawWorksheets
+            .filter(w => !w.deleted) // Filter out deleted worksheets
+            .map((w, index) => {
+                try {
+                    const normalized = normalizeWorksheet(w);
+                    if (!normalized) {
+                        console.warn('Worksheet normalized to null/undefined:', { original: w, index });
+                        return null;
+                    }
+                    return normalized;
+                } catch (error) {
+                    console.error('Error normalizing worksheet:', error, { worksheet: w, index });
+                    return null;
+                }
+            })
+            .filter(Boolean);
+
+        // Sort by date descending, handling invalid dates
+        return worksheets.sort((a, b) => {
+            const dateA = a.date ? new Date(a.date) : new Date(0);
+            const dateB = b.date ? new Date(b.date) : new Date(0);
+            return dateB - dateA;
+        });
+    } catch (error) {
+        console.error('Error getting all worksheets:', error);
+        return [];
+    }
 }
 
 // Get worksheet by ID
 async function getWorksheetById(id) {
-    const raw = await dbOperation('readonly', (store) => {
-        return store.get(id);
-    });
+    try {
+        const raw = await dbOperation('readonly', (store) => {
+            return store.get(id);
+        });
 
-    return normalizeWorksheet(raw);
+        if (!raw) {
+            return null;
+        }
+
+        return normalizeWorksheet(raw);
+    } catch (error) {
+        console.error('Error getting worksheet by ID:', error, { id });
+        return null;
+    }
 }
 
-// Delete worksheet
+// Delete worksheet (using soft delete/tombstone pattern for multi-device sync)
 async function deleteWorksheet(id) {
-    await dbOperation('readwrite', (store) => {
-        return store.delete(id);
-    });
+    // Mark as deleted in IndexedDB (tombstone)
+    const worksheet = await getWorksheetById(id);
+    if (worksheet) {
+        worksheet.deleted = true;
+        worksheet.deletedAt = new Date().toISOString();
+        worksheet.updatedAt = new Date().toISOString();
+        
+        await dbOperation('readwrite', (store) => {
+            return store.put(worksheet);
+        });
+    }
+
+    // Mark as deleted in cloud if authenticated
+    if (syncService && authService && await authService.isAuthenticated()) {
+        try {
+            const userId = await authService.getUserId();
+            await dbService.deleteWorksheet(userId, id);
+        } catch (error) {
+            console.error('Error deleting from cloud:', error);
+            // Don't fail - it's deleted locally
+        }
+    }
 }
 
 // View management
@@ -346,7 +514,7 @@ function getURLState() {
     const params = new URLSearchParams(window.location.search);
     return {
         view: params.get('view') || 'list',
-        id: params.get('id') ? parseInt(params.get('id')) : null
+        id: params.get('id') || null
     };
 }
 
@@ -475,50 +643,73 @@ function getSituationPreview(worksheet) {
 // Render worksheets list
 async function renderWorksheetsList() {
     const listContainer = document.getElementById('worksheets-list');
-    const worksheets = await getAllWorksheets();
-
-    if (worksheets.length === 0) {
-        listContainer.innerHTML = '<p class="text-center py-12 text-gray-500 italic">No worksheets yet. Create your first one to get started.</p>';
+    if (!listContainer) {
+        console.error('Worksheets list container not found');
         return;
     }
 
-    listContainer.innerHTML = worksheets.map(worksheet => {
-        const date = new Date(worksheet.date);
-        const truncatedPreview = getSituationPreview(worksheet);
+    try {
+        const worksheets = await getAllWorksheets();
 
-        // Collect statement texts from the nested statements array (if present)
-        const statements = Array.isArray(worksheet.statements)
-            ? worksheet.statements
-                .map(s => s.statement)
-                .filter(Boolean)
-            : [];
+        if (!worksheets || worksheets.length === 0) {
+            listContainer.innerHTML = '<p class="text-center py-12 text-gray-500 italic">No worksheets yet. Create your first one to get started.</p>';
+            return;
+        }
 
-        const statementsHtml = statements.length
-            ? `
-                <ul class="text-gray-600 text-sm mt-2 space-y-1">
-                    ${statements.map(s => `<li class="list-disc list-inside ml-4">${s}</li>`).join('')}
-                </ul>
-              `
-            : `<div class="text-gray-600 text-sm mt-2 italic">No statements yet.</div>`;
+        listContainer.innerHTML = worksheets
+            .filter(worksheet => {
+                // Filter out worksheets without valid IDs
+                if (!worksheet.id) {
+                    console.warn('Worksheet missing ID:', worksheet);
+                    return false;
+                }
+                return true;
+            })
+            .map(worksheet => {
+                const date = worksheet.date ? new Date(worksheet.date) : new Date();
+                const truncatedPreview = getSituationPreview(worksheet);
 
-        return `
-            <div class="bg-white rounded-lg border border-gray-200 p-6 mb-4 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:shadow-lg hover:-translate-y-0.5" data-id="${worksheet.id}">
-                <div class="flex justify-between items-start mb-2 flex-wrap">
-                    <h3 class="text-l font-semibold text-gray-900 mb-0">${truncatedPreview}</h3>
-                    <span class="text-gray-500 text-sm whitespace-nowrap ml-4">${date.toLocaleDateString()}</span>
+                // Collect statement texts from the nested statements array (if present)
+                const statements = Array.isArray(worksheet.statements)
+                    ? worksheet.statements
+                        .map(s => s.statement)
+                        .filter(Boolean)
+                    : [];
+
+                const statementsHtml = statements.length
+                    ? `
+                        <ul class="text-gray-600 text-sm mt-2 space-y-1">
+                            ${statements.map(s => `<li class="list-disc list-inside ml-4">${s}</li>`).join('')}
+                        </ul>
+                      `
+                    : `<div class="text-gray-600 text-sm mt-2 italic">No statements yet.</div>`;
+
+                return `
+                    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-4 cursor-pointer transition-all duration-200 hover:border-blue-500 hover:shadow-lg hover:-translate-y-0.5" data-id="${worksheet.id}">
+                    <div class="flex justify-between items-start mb-2 flex-wrap">
+                        <h3 class="text-l font-semibold text-gray-900 mb-0">${truncatedPreview}</h3>
+                        <span class="text-gray-500 text-sm whitespace-nowrap ml-4">${date.toLocaleDateString()}</span>
+                    </div>
+                    ${statementsHtml}
                 </div>
-                ${statementsHtml}
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
 
-    // Add click handlers
-    listContainer.querySelectorAll('[data-id]').forEach(card => {
-        card.addEventListener('click', () => {
-            const id = parseInt(card.dataset.id);
-            showWorksheetDetail(id);
+        // Add click handlers
+        listContainer.querySelectorAll('[data-id]').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = card.dataset.id;
+                if (id) {
+                    showWorksheetDetail(id);
+                } else {
+                    console.error('Invalid worksheet ID:', id);
+                }
+            });
         });
-    });
+    } catch (error) {
+        console.error('Error rendering worksheets list:', error);
+        listContainer.innerHTML = '<p class="text-center py-12 text-red-500">Error loading worksheets. Please refresh the page.</p>';
+    }
 }
 
 // Show worksheet detail
@@ -780,6 +971,218 @@ async function saveFormData() {
     }
 }
 
+// Initialize sync service
+async function initializeSync() {
+    // Skip if Firebase not configured
+    if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
+        console.warn('Firebase not configured. Sync disabled.');
+        return;
+    }
+
+    try {
+        // Initialize auth and db services
+        authService = new FirebaseAuthService(FIREBASE_CONFIG);
+        dbService = new FirebaseDbService();
+        
+        // Initialize auth service first (this initializes Firebase)
+        try {
+            await authService.initialize();
+        } catch (error) {
+            console.error('Error initializing auth service:', error);
+            throw error;
+        }
+        
+        // Note: With Firebase v11 modular API, we don't need to check for a global firebase object
+        // The authService.initialize() handles Firebase app initialization
+        
+        // Initialize sync service
+        syncService = new SyncService();
+        
+        // Connect sync service to local database functions
+        syncService.getAllLocalWorksheets = getAllWorksheets;
+        syncService.getLocalWorksheetById = getWorksheetById;
+        syncService.saveLocalWorksheet = async (worksheet) => {
+            // Save to IndexedDB without triggering another sync
+            // Both local and remote now use string IDs, so no conversion needed
+            await dbOperation('readwrite', (store) => {
+                return store.put(worksheet);
+            });
+        };
+        syncService.updateLocalWorksheet = async (worksheet) => {
+            // Update in IndexedDB
+            await dbOperation('readwrite', (store) => {
+                return store.put(worksheet);
+            });
+        };
+        syncService.deleteLocalWorksheet = async (id) => {
+            // Delete from IndexedDB (hard delete for locally handling remote deletions)
+            await dbOperation('readwrite', (store) => {
+                return store.delete(id);
+            });
+        };
+        
+        // Initialize sync (dbService will be initialized when needed, after Firebase is ready)
+        await syncService.initialize(authService, dbService);
+        
+        // Listen for sync events
+        syncService.addListener((event, data) => {
+            if (event === 'sync-started') {
+                showNotification('Sync started', 'success');
+            } else if (event === 'sync-progress') {
+                if (data.status === 'complete') {
+                    const deletedMsg = data.deleted ? `, ${data.deleted} deleted` : '';
+                    showNotification(
+                        `Sync complete: ${data.uploaded || 0} uploaded, ${data.downloaded || 0} downloaded${deletedMsg}`,
+                        'success'
+                    );
+                    // Refresh the list view if we're on it
+                    if (views.list && !views.list.classList.contains('hidden')) {
+                        renderWorksheetsList();
+                    }
+                }
+            } else if (event === 'sync-error') {
+                showNotification('Sync error: ' + (data?.message || 'Unknown error'), 'error');
+            } else if (event === 'worksheet-synced') {
+                console.log('Worksheet synced:', data);
+            } else if (event === 'worksheet-added') {
+                // New worksheet from another device
+                if (views.list && !views.list.classList.contains('hidden')) {
+                    renderWorksheetsList();
+                }
+            } else if (event === 'worksheet-updated') {
+                // Updated worksheet from another device
+                if (currentWorksheetId === data.id) {
+                    // If viewing this worksheet, reload it
+                    showWorksheetDetail(data.id);
+                }
+                if (views.list && !views.list.classList.contains('hidden')) {
+                    renderWorksheetsList();
+                }
+            } else if (event === 'worksheet-deleted') {
+                // Worksheet deleted from another device
+                if (currentWorksheetId === data.id) {
+                    // If viewing this worksheet, go back to list
+                    showNotification('This worksheet was deleted on another device', 'info');
+                    showView('list');
+                    currentWorksheetId = null;
+                }
+                if (views.list && !views.list.classList.contains('hidden')) {
+                    renderWorksheetsList();
+                }
+            } else if (event === 'online') {
+                showNotification('Back online. Syncing...', 'success');
+            } else if (event === 'offline') {
+                showNotification('You are offline. Changes will sync when you reconnect.', 'warning');
+            }
+        });
+        
+        // Listen for auth state changes
+        authService.addListener((event, data) => {
+            if (event === 'signin') {
+                updateAuthUI();
+                syncService.startSync();
+            } else if (event === 'signout') {
+                updateAuthUI();
+                syncService.stopSync();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error initializing sync:', error);
+        showNotification('Error initializing sync: ' + error.message, 'error');
+    }
+}
+
+// Authentication handlers
+async function handleSignUp(email, password) {
+    if (!authService) {
+        showNotification('Sync service not initialized', 'error');
+        return;
+    }
+
+    try {
+        await authService.signUp(email, password);
+        showNotification('Account created successfully!', 'success');
+        // Note: syncService.startSync() is called automatically by the auth listener
+        updateAuthUI();
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function handleSignIn(email, password) {
+    if (!authService) {
+        showNotification('Sync service not initialized', 'error');
+        return;
+    }
+
+    try {
+        await authService.signIn(email, password);
+        showNotification('Signed in successfully!', 'success');
+        // Note: syncService.startSync() is called automatically by the auth listener
+        updateAuthUI();
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function handleSignOut() {
+    if (!authService) return;
+
+    try {
+        await authService.signOut();
+        if (syncService) {
+            syncService.stopSync();
+        }
+        showNotification('Signed out successfully', 'success');
+        updateAuthUI();
+    } catch (error) {
+        showNotification('Error signing out: ' + error.message, 'error');
+    }
+}
+
+function updateAuthUI() {
+    if (!authService) return;
+
+    authService.getCurrentUser().then(user => {
+        const authSection = document.getElementById('auth-section');
+        const userSection = document.getElementById('user-section');
+        const userEmail = document.getElementById('user-email');
+
+        if (user && authSection && userSection) {
+            // User is signed in
+            if (userEmail) userEmail.textContent = user.email || 'User';
+            authSection.classList.add('hidden');
+            userSection.classList.remove('hidden');
+        } else if (authSection && userSection) {
+            // User is signed out
+            authSection.classList.remove('hidden');
+            userSection.classList.add('hidden');
+        }
+    });
+}
+
+async function handleManualSync() {
+    if (!syncService || !authService) {
+        showNotification('Sync service not available', 'error');
+        return;
+    }
+
+    if (!await authService.isAuthenticated()) {
+        showNotification('Please sign in to sync', 'warning');
+        return;
+    }
+
+    try {
+        showNotification('Syncing...', 'info');
+        await syncService.performInitialSync();
+        showNotification('Sync complete!', 'success');
+        await renderWorksheetsList();
+    } catch (error) {
+        showNotification('Sync failed: ' + error.message, 'error');
+    }
+}
+
 // Restore state from URL
 async function restoreStateFromURL() {
     const state = getURLState();
@@ -815,6 +1218,12 @@ async function restoreStateFromURL() {
 // Event listeners
 document.addEventListener('DOMContentLoaded', async () => {
     await initDB();
+    
+    // Initialize sync (this will check if Firebase is configured)
+    await initializeSync();
+    
+    // Update auth UI
+    updateAuthUI();
     
     // Restore state from URL on initial load
     await restoreStateFromURL();
@@ -878,9 +1287,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Prevent form submission on Enter
-    document.getElementById('worksheet-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveFormData();
-    });
+    const worksheetForm = document.getElementById('worksheet-form');
+    if (worksheetForm) {
+        worksheetForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveFormData();
+        });
+    }
+
+    // Auth form handlers
+    const signUpForm = document.getElementById('signup-form');
+    if (signUpForm) {
+        signUpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            await handleSignUp(email, password);
+        });
+    }
+    
+    const signInForm = document.getElementById('signin-form');
+    if (signInForm) {
+        signInForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+            await handleSignIn(email, password);
+        });
+    }
+    
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleSignOut);
+    }
+    
+    const syncBtn = document.getElementById('manual-sync-btn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', handleManualSync);
+    }
 });
 

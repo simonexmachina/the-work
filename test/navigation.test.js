@@ -57,7 +57,7 @@ describe('Navigation and URL State', () => {
       params.set('view', 'worksheet');
       params.set('id', '123');
       const url = `/?${params.toString()}`;
-      window.history.pushState({ view: 'worksheet', id: 123 }, '', url);
+      window.history.pushState({ view: 'worksheet', id: '123' }, '', url);
       
       const urlParams = new URLSearchParams(window.location.search);
       expect(urlParams.get('view')).toBe('worksheet');
@@ -69,7 +69,7 @@ describe('Navigation and URL State', () => {
       params.set('view', 'detail');
       params.set('id', '456');
       const url = `/?${params.toString()}`;
-      window.history.pushState({ view: 'detail', id: 456 }, '', url);
+      window.history.pushState({ view: 'detail', id: '456' }, '', url);
       
       const urlParams = new URLSearchParams(window.location.search);
       expect(urlParams.get('view')).toBe('detail');

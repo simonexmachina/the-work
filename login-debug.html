@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Debug - The Work</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Login Diagnostics</h1>
+        
+        <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+            <h2 class="text-xl font-bold mb-4">System Status</h2>
+            <div id="status" class="space-y-2 font-mono text-sm"></div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+            <h2 class="text-xl font-bold mb-4">Test Login</h2>
+            <form id="test-login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input 
+                        type="email" 
+                        id="test-email" 
+                        required
+                        class="w-full p-2 border border-gray-300 rounded-lg"
+                        placeholder="test@example.com"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input 
+                        type="password" 
+                        id="test-password" 
+                        required
+                        minlength="6"
+                        class="w-full p-2 border border-gray-300 rounded-lg"
+                        placeholder="••••••••"
+                    >
+                </div>
+                <button 
+                    type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
+                >
+                    Test Sign In
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+            <h2 class="text-xl font-bold mb-4">Console Log</h2>
+            <div id="console-log" class="space-y-1 font-mono text-xs max-h-96 overflow-y-auto bg-gray-900 text-green-400 p-4 rounded"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <script type="module">
+        import { FirebaseAuthService } from './firebase-auth.js';
+
+        // Console logging to page
+        const consoleLog = document.getElementById('console-log');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addLog(type, ...args) {
+            const line = document.createElement('div');
+            line.className = type === 'error' ? 'text-red-400' : 
+                            type === 'warn' ? 'text-yellow-400' : 
+                            'text-green-400';
+            line.textContent = `[${type.toUpperCase()}] ${args.map(a => 
+                typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ')}`;
+            consoleLog.appendChild(line);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog(...args);
+            addLog('log', ...args);
+        };
+
+        console.error = (...args) => {
+            originalError(...args);
+            addLog('error', ...args);
+        };
+
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addLog('warn', ...args);
+        };
+
+        // Firebase Configuration
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyC1nmSSaOSZJVqI9tdIGBDGkiC1asRec5s",
+            authDomain: "the-work-46755.firebaseapp.com",
+            projectId: "the-work-46755",
+            storageBucket: "the-work-46755.firebasestorage.app",
+            messagingSenderId: "792441404750",
+            appId: "1:792441404750:web:fbebcb49f6fce10fbfb21f"
+        };
+
+        // Status checks
+        const status = document.getElementById('status');
+
+        function addStatus(message, success = true) {
+            const div = document.createElement('div');
+            div.className = success ? 'text-green-600' : 'text-red-600';
+            div.textContent = `${success ? '✓' : '✗'} ${message}`;
+            status.appendChild(div);
+        }
+
+        // Check Firebase SDK
+        if (typeof firebase !== 'undefined') {
+            addStatus('Firebase SDK loaded');
+            console.log('Firebase SDK version:', firebase.SDK_VERSION);
+        } else {
+            addStatus('Firebase SDK NOT loaded', false);
+            console.error('Firebase SDK is undefined');
+        }
+
+        // Check Firebase config
+        if (FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey) {
+            addStatus('Firebase config present');
+        } else {
+            addStatus('Firebase config missing', false);
+        }
+
+        // Initialize Firebase Auth Service
+        let authService = null;
+        try {
+            authService = new FirebaseAuthService(FIREBASE_CONFIG);
+            addStatus('FirebaseAuthService created');
+            console.log('Auth service created:', authService);
+        } catch (error) {
+            addStatus('Failed to create FirebaseAuthService', false);
+            console.error('Error creating auth service:', error);
+        }
+
+        // Initialize auth service
+        if (authService) {
+            try {
+                await authService.initialize();
+                addStatus('Auth service initialized');
+                console.log('Auth service initialized successfully');
+                
+                // Check if user is already signed in
+                const currentUser = await authService.getCurrentUser();
+                if (currentUser) {
+                    addStatus(`Already signed in as: ${currentUser.email}`);
+                } else {
+                    addStatus('No user currently signed in');
+                }
+            } catch (error) {
+                addStatus('Failed to initialize auth service', false);
+                console.error('Error initializing auth service:', error);
+            }
+        }
+
+        // Test login form
+        document.getElementById('test-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+            
+            console.log('Attempting sign in with:', email);
+            
+            try {
+                const user = await authService.signIn(email, password);
+                console.log('Sign in successful!', user);
+                addStatus(`Successfully signed in as: ${user.email}`);
+                alert('Login successful! Check console for details.');
+            } catch (error) {
+                console.error('Sign in failed:', error);
+                addStatus(`Sign in failed: ${error.message}`, false);
+                alert('Login failed: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -6,6 +6,7 @@ A web application for practicing "The Work" by Byron Katie. This app helps you c
 
 - **Create Worksheets**: Fill out the complete "Judge Your Neighbor" worksheet with all sections
 - **Save & Store**: All worksheets are saved locally in your browser using IndexedDB
+- **Cross-Device Sync**: Sign in to sync your worksheets across all your devices using Firebase
 - **Review Previous Worksheets**: View a list of all your previous worksheets
 - **Edit & Delete**: Edit existing worksheets or delete them if needed
 - **Clean Interface**: Simple, beautiful design using Tailwind CSS
@@ -21,6 +22,16 @@ A web application for practicing "The Work" by Byron Katie. This app helps you c
 7. Edit or delete worksheets as needed
 
 ## Development
+
+### Running the Dev Server
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+This will start http-server on port 8080 and automatically open your browser.
 
 ### Running Tests
 
@@ -55,10 +66,19 @@ npm run test:coverage
 
 ## Technology
 
-- Pure HTML, CSS, and JavaScript (no frameworks)
+- Pure HTML, CSS, and JavaScript (ES modules)
 - IndexedDB for local storage
+- Firebase for authentication and cloud sync
 - Tailwind CSS for styling
 - Vitest for testing
+
+## Sync Setup
+
+To enable cross-device synchronization:
+
+1. Follow the setup instructions in [`FIREBASE_SETUP.md`](./FIREBASE_SETUP.md)
+2. If you encounter permissions errors, see [`FIX_PERMISSIONS.md`](./FIX_PERMISSIONS.md)
+3. Sign in to sync your worksheets across devices
 
 ## Browser Support
 

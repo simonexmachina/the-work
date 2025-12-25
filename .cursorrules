@@ -1,5 +1,15 @@
 # Cursor Configuration
 
+## Development Server
+
+To start the development server for this project, use:
+
+```bash
+npm run dev
+```
+
+This will start an http-server on port 8080 and automatically open the application in your browser.
+
 ## Test Configuration
 
 When running tests via Cursor's agent, Vitest watch mode is automatically disabled to prevent waiting for changes when tests fail. This is configured in `vitest.config.js` and is triggered when:
@@ -10,3 +20,6 @@ When running tests via Cursor's agent, Vitest watch mode is automatically disabl
 
 This ensures tests complete immediately rather than waiting for file changes when running in automated contexts.
 
+## Version Control
+
+Create Git commits frequently.

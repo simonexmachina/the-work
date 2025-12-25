@@ -4,6 +4,8 @@
   "description": "A web app for doing The Work by Byron Katie",
   "type": "module",
   "scripts": {
+    "dev": "npx --yes serve -p 8080",
+    "dev:old": "http-server . -p 8080 -o",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -14,6 +16,7 @@
     "vitest": "^1.2.0",
     "@vitest/coverage-v8": "^1.2.0",
     "fake-indexeddb": "^5.0.0",
+    "http-server": "^14.1.1",
     "jsdom": "^23.0.0"
   }
 }

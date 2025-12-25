@@ -143,7 +143,7 @@ describe('App Functionality', () => {
     it('should render worksheet cards with truncated situation in heading', () => {
       const listContainer = document.getElementById('worksheets-list');
       const worksheet = {
-        id: 1,
+        id: 'test-id-1',
         situation: 'Test situation. This is a longer description.',
         person: 'Test person',
         date: new Date().toISOString(),
@@ -185,7 +185,7 @@ describe('App Functionality', () => {
 
       const card = listContainer.querySelector('[data-id]');
       expect(card).toBeTruthy();
-      expect(card.dataset.id).toBe('1');
+      expect(card.dataset.id).toBe('test-id-1');
       const heading = card.querySelector('h3');
       expect(heading.textContent).toBe('Test situation....');
       expect(card.textContent).toContain('No statements yet');
@@ -194,7 +194,7 @@ describe('App Functionality', () => {
     it('should render worksheet cards with statements list', () => {
       const listContainer = document.getElementById('worksheets-list');
       const worksheet = {
-        id: 2,
+        id: 'test-id-2',
         situation: 'Another situation.',
         date: new Date().toISOString(),
         statements: [
@@ -255,7 +255,7 @@ describe('App Functionality', () => {
     it('should handle worksheet without statements array', () => {
       const listContainer = document.getElementById('worksheets-list');
       const worksheet = {
-        id: 3,
+        id: 'test-id-3',
         situation: 'Situation without statements.',
         date: new Date().toISOString()
       };

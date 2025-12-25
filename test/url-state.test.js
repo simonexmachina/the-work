@@ -106,7 +106,7 @@ describe('URL State Management', () => {
     });
 
     it('should support popstate event', (done) => {
-      const state = { view: 'detail', id: 123 };
+      const state = { view: 'detail', id: '123' };
       window.history.pushState(state, '', '/?view=detail&id=123');
       
       window.addEventListener('popstate', (event) => {
@@ -120,7 +120,7 @@ describe('URL State Management', () => {
 
     it('should update URL without page reload', () => {
       const initialURL = window.location.href;
-      const state = { view: 'worksheet', id: 456 };
+      const state = { view: 'worksheet', id: '456' };
       window.history.pushState(state, '', '/?view=worksheet&id=456');
       
       expect(window.location.href).not.toBe(initialURL);
