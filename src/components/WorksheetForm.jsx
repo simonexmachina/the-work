@@ -33,6 +33,10 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
   const textareasRef = useRef(new Map());
   const saveHeightsTimeoutRef = useRef(null);
 
+  // Track unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const isLoadingRef = useRef(false);
+
   // Debounced function to save textarea heights
   const saveHeights = useCallback(async () => {
     if (!id) return; // Only save heights for existing worksheets
@@ -71,11 +75,26 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
     };
   }, [fieldHeights, id, saveHeights]);
 
+  // Warn before closing/refreshing browser tab
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   // Load existing worksheet if editing
   useEffect(() => {
     if (!id) return;
 
     async function loadWorksheet() {
+      isLoadingRef.current = true;
       try {
         const worksheet = await getWorksheet(id);
         if (!worksheet) {
@@ -117,11 +136,22 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
         showNotification('Error loading worksheet', 'error');
       } finally {
         setLoading(false);
+        // Small delay to ensure all states are set before marking as loaded
+        setTimeout(() => {
+          isLoadingRef.current = false;
+        }, 100);
       }
     }
 
     loadWorksheet();
   }, [id, getWorksheet, navigate, showNotification]);
+
+  // Mark that changes have been made
+  const markChanged = () => {
+    if (!isLoadingRef.current) {
+      setHasUnsavedChanges(true);
+    }
+  };
 
   const handleAddStatement = () => {
     setStatements([
@@ -135,6 +165,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
         turnaround: '',
       },
     ]);
+    markChanged();
   };
 
   const handleStatementChange = (index, field, value) => {
@@ -144,6 +175,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
       [field]: value,
     };
     setStatements(newStatements);
+    markChanged();
   };
 
   const handleSave = async e => {
@@ -170,6 +202,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
     }
 
     try {
+      setHasUnsavedChanges(false);
       const savedId = await saveWorksheet(worksheetData);
       showNotification('Worksheet saved successfully!', 'success');
       navigate(`/detail/${savedId}`);
@@ -214,6 +247,14 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
   );
 
   const handleBack = () => {
+    if (hasUnsavedChanges) {
+      const proceed = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (!proceed) {
+        return;
+      }
+    }
     navigate('/');
   };
 
@@ -256,7 +297,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           <FormField
             label="Describe the situation:"
             value={situation}
-            onChange={setSituation}
+            onChange={(val) => { setSituation(val); markChanged(); }}
             placeholder="Example: My partner didn't call me when they said they would..."
             rows={3}
             fieldName="situation"
@@ -265,7 +306,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           <FormField
             label="Who angers, confuses, or disappoints you, and why?"
             value={person}
-            onChange={setPerson}
+            onChange={(val) => { setPerson(val); markChanged(); }}
             placeholder="Example: I am angry at Paul because he doesn't listen to me..."
             rows={3}
             fieldName="person"
@@ -274,7 +315,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           <FormField
             label="How do you want them to change? What do you want them to do?"
             value={wantChange}
-            onChange={setWantChange}
+            onChange={(val) => { setWantChange(val); markChanged(); }}
             placeholder="Example: I want Paul to respect me, to see me, to treat me with kindness..."
             rows={3}
             fieldName="wantChange"
@@ -283,7 +324,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           <FormField
             label="What advice would you offer to them?"
             value={advice}
-            onChange={setAdvice}
+            onChange={(val) => { setAdvice(val); markChanged(); }}
             placeholder="Example: Paul should be more considerate, he should think before he speaks..."
             rows={3}
             fieldName="advice"
@@ -292,7 +333,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           <FormField
             label="In order for you to be happy, what do you need them to think, say, feel, or do?"
             value={needHappy}
-            onChange={setNeedHappy}
+            onChange={(val) => { setNeedHappy(val); markChanged(); }}
             placeholder="Example: I need Paul to understand me, to appreciate me, to love me..."
             rows={3}
             fieldName="needHappy"
@@ -338,7 +379,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           <FormField
             label="Additional notes or insights:"
             value={notes}
-            onChange={setNotes}
+            onChange={(val) => { setNotes(val); markChanged(); }}
             placeholder="Any additional reflections, insights, or notes..."
             rows={5}
             fieldName="notes"
