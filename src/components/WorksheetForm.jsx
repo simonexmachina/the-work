@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification }) {
@@ -27,6 +27,49 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
     
     // Notes
     const [notes, setNotes] = useState('');
+    
+    // Textarea heights tracking
+    const [fieldHeights, setFieldHeights] = useState({});
+    const textareasRef = useRef(new Map());
+    const saveHeightsTimeoutRef = useRef(null);
+
+    // Debounced function to save textarea heights
+    const saveHeights = useCallback(async () => {
+        if (!id) return; // Only save heights for existing worksheets
+        
+        try {
+            const worksheet = await getWorksheet(id);
+            if (!worksheet) return;
+            
+            // Update only the fieldHeights property
+            worksheet.fieldHeights = fieldHeights;
+            worksheet.updatedAt = new Date().toISOString();
+            
+            // Save without showing notification (silent save)
+            await saveWorksheet(worksheet);
+        } catch (error) {
+            console.error('Error saving textarea heights:', error);
+        }
+    }, [id, fieldHeights, getWorksheet, saveWorksheet]);
+
+    // Debounced save of heights (500ms after last change)
+    useEffect(() => {
+        if (!id || Object.keys(fieldHeights).length === 0) return;
+        
+        if (saveHeightsTimeoutRef.current) {
+            clearTimeout(saveHeightsTimeoutRef.current);
+        }
+        
+        saveHeightsTimeoutRef.current = setTimeout(() => {
+            saveHeights();
+        }, 500);
+        
+        return () => {
+            if (saveHeightsTimeoutRef.current) {
+                clearTimeout(saveHeightsTimeoutRef.current);
+            }
+        };
+    }, [fieldHeights, id, saveHeights]);
 
     // Load existing worksheet if editing
     useEffect(() => {
@@ -61,6 +104,11 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         q4Without: '',
                         turnaround: ''
                     }]);
+                }
+                
+                // Load textarea heights
+                if (worksheet.fieldHeights) {
+                    setFieldHeights(worksheet.fieldHeights);
                 }
             } catch (error) {
                 console.error('Error loading worksheet:', error);
@@ -108,7 +156,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
             advice,
             needHappy,
             statements: nonEmptyStatements,
-            notes
+            notes,
+            fieldHeights
         };
 
         if (id) {
@@ -124,6 +173,37 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
             showNotification('Error saving worksheet. Please try again.', 'error');
         }
     };
+    
+    // Register textarea and set up ResizeObserver
+    const registerTextarea = useCallback((fieldName, element) => {
+        if (!element) {
+            textareasRef.current.delete(fieldName);
+            return;
+        }
+        
+        textareasRef.current.set(fieldName, element);
+        
+        // Apply saved height if available
+        if (fieldHeights[fieldName]) {
+            element.style.height = fieldHeights[fieldName];
+        }
+        
+        // Set up ResizeObserver
+        const resizeObserver = new ResizeObserver(() => {
+            const newHeight = `${element.offsetHeight}px`;
+            setFieldHeights(prev => {
+                if (prev[fieldName] === newHeight) return prev;
+                return { ...prev, [fieldName]: newHeight };
+            });
+        });
+        
+        resizeObserver.observe(element);
+        
+        // Cleanup function
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [fieldHeights]);
 
     const handleBack = () => {
         navigate('/');
@@ -170,6 +250,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         onChange={setSituation}
                         placeholder="Example: My partner didn't call me when they said they would..."
                         rows={3}
+                        fieldName="situation"
+                        registerTextarea={registerTextarea}
                     />
                     <FormField 
                         label="Who angers, confuses, or disappoints you, and why?"
@@ -177,6 +259,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         onChange={setPerson}
                         placeholder="Example: I am angry at Paul because he doesn't listen to me..."
                         rows={3}
+                        fieldName="person"
+                        registerTextarea={registerTextarea}
                     />
                     <FormField 
                         label="How do you want them to change? What do you want them to do?"
@@ -184,6 +268,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         onChange={setWantChange}
                         placeholder="Example: I want Paul to respect me, to see me, to treat me with kindness..."
                         rows={3}
+                        fieldName="wantChange"
+                        registerTextarea={registerTextarea}
                     />
                     <FormField 
                         label="What advice would you offer to them?"
@@ -191,6 +277,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         onChange={setAdvice}
                         placeholder="Example: Paul should be more considerate, he should think before he speaks..."
                         rows={3}
+                        fieldName="advice"
+                        registerTextarea={registerTextarea}
                     />
                     <FormField 
                         label="In order for you to be happy, what do you need them to think, say, feel, or do?"
@@ -198,6 +286,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         onChange={setNeedHappy}
                         placeholder="Example: I need Paul to understand me, to appreciate me, to love me..."
                         rows={3}
+                        fieldName="needHappy"
+                        registerTextarea={registerTextarea}
                     />
                 </section>
 
@@ -216,6 +306,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                             number={index + 1}
                             statement={statement}
                             onChange={(field, value) => handleStatementChange(index, field, value)}
+                            registerTextarea={registerTextarea}
                         />
                     ))}
                     
@@ -241,6 +332,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
                         onChange={setNotes}
                         placeholder="Any additional reflections, insights, or notes..."
                         rows={5}
+                        fieldName="notes"
+                        registerTextarea={registerTextarea}
                     />
                 </section>
             </form>
@@ -248,7 +341,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
     );
 }
 
-function FormField({ label, value, onChange, placeholder, rows = 3 }) {
+function FormField({ label, value, onChange, placeholder, rows = 3, fieldName, registerTextarea }) {
     return (
         <div className="mt-4">
             <label className="block mb-2 font-semibold text-gray-900">
@@ -260,13 +353,15 @@ function FormField({ label, value, onChange, placeholder, rows = 3 }) {
                 rows={rows}
                 placeholder={placeholder}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y min-h-[80px]"
+                ref={fieldName && registerTextarea ? (el) => registerTextarea(fieldName, el) : undefined}
             />
         </div>
     );
 }
 
-function StatementGroup({ number, statement, onChange }) {
+function StatementGroup({ number, statement, onChange, registerTextarea }) {
     const isFirstStatement = number === 1;
+    const suffix = number === 1 ? '' : number;
     
     return (
         <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
@@ -277,6 +372,8 @@ function StatementGroup({ number, statement, onChange }) {
                 value={statement.statement}
                 onChange={(value) => onChange('statement', value)}
                 rows={2}
+                fieldName={`statement${number}`}
+                registerTextarea={registerTextarea}
             />
             <FormField 
                 label="Question 1: Is it true?"
@@ -284,6 +381,8 @@ function StatementGroup({ number, statement, onChange }) {
                 onChange={(value) => onChange('q1True', value)}
                 placeholder={isFirstStatement ? 'Yes or No, and why...' : ''}
                 rows={2}
+                fieldName={`q1True${suffix}`}
+                registerTextarea={registerTextarea}
             />
             <FormField 
                 label="Question 2: Can you absolutely know it's true?"
@@ -291,6 +390,8 @@ function StatementGroup({ number, statement, onChange }) {
                 onChange={(value) => onChange('q2Absolutely', value)}
                 placeholder={isFirstStatement ? 'Yes or No, and why...' : ''}
                 rows={2}
+                fieldName={`q2Absolutely${suffix}`}
+                registerTextarea={registerTextarea}
             />
             <FormField 
                 label="Question 3: How do you react when you believe that thought?"
@@ -298,6 +399,8 @@ function StatementGroup({ number, statement, onChange }) {
                 onChange={(value) => onChange('q3React', value)}
                 placeholder={isFirstStatement ? 'What happens? How do you treat the person? How do you treat yourself?' : ''}
                 rows={3}
+                fieldName={`q3React${suffix}`}
+                registerTextarea={registerTextarea}
             />
             <FormField 
                 label="Question 4: Who would you be without that thought?"
@@ -305,6 +408,8 @@ function StatementGroup({ number, statement, onChange }) {
                 onChange={(value) => onChange('q4Without', value)}
                 placeholder={isFirstStatement ? 'Close your eyes. Who are you without this thought?' : ''}
                 rows={3}
+                fieldName={`q4Without${suffix}`}
+                registerTextarea={registerTextarea}
             />
             <FormField 
                 label="Turnarounds (write all turnarounds you find):"
@@ -312,6 +417,8 @@ function StatementGroup({ number, statement, onChange }) {
                 onChange={(value) => onChange('turnaround', value)}
                 placeholder={isFirstStatement ? "For example:\n- Opposite: They don't listen to me → They do listen to me.\n- To yourself: They don't listen to me → I don't listen to me.\n- To them: They don't listen to me → I don't listen to them." : ''}
                 rows={4}
+                fieldName={`turnaround${number}`}
+                registerTextarea={registerTextarea}
             />
             
             <div className="mt-2 text-sm text-gray-600 bg-gray-50 border-l-4 border-blue-200 rounded p-3">
