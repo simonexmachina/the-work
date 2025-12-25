@@ -314,6 +314,14 @@ function renderWorksheetForm() {
 
     // Initialize the statements section with the default number of statements
     initializeStatementsSection();
+    
+    // Set up resize listeners for new forms (after a short delay to ensure DOM is ready)
+    setTimeout(() => {
+        const form = document.getElementById('worksheet-form');
+        if (form && currentWorksheetId) {
+            setupTextareaResizeListeners(form);
+        }
+    }, 0);
 }
 
 function renderStep1Section() {
@@ -778,6 +786,82 @@ function renderStatementDetail(statement, num) {
     `;
 }
 
+// Set up resize listeners for textareas to auto-save heights
+function setupTextareaResizeListeners(form) {
+    const textareas = form.querySelectorAll('textarea');
+    
+    textareas.forEach(textarea => {
+        // Use ResizeObserver to detect when textarea height changes
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const textarea = entry.target;
+                // Store the new height in the element's style
+                const newHeight = `${textarea.offsetHeight}px`;
+                textarea.style.height = newHeight;
+                
+                // Auto-save the worksheet if we're editing an existing one
+                if (currentWorksheetId) {
+                    debouncedSaveHeights();
+                }
+            }
+        });
+        
+        resizeObserver.observe(textarea);
+        
+        // Store the observer on the textarea so we can disconnect it later if needed
+        textarea._resizeObserver = resizeObserver;
+    });
+}
+
+// Debounced function to save textarea heights without saving the entire form
+let saveHeightsTimeout = null;
+async function debouncedSaveHeights() {
+    // Clear any existing timeout
+    if (saveHeightsTimeout) {
+        clearTimeout(saveHeightsTimeout);
+    }
+    
+    // Set a new timeout to save after 500ms of no changes
+    saveHeightsTimeout = setTimeout(async () => {
+        try {
+            const worksheet = await getWorksheetById(currentWorksheetId);
+            if (!worksheet) return;
+            
+            // Collect current textarea heights
+            const form = document.getElementById('worksheet-form');
+            if (!form) return;
+            
+            const fieldHeights = {};
+            form.querySelectorAll('textarea').forEach(textarea => {
+                if (textarea.name) {
+                    const height = textarea.style.height || `${textarea.offsetHeight}px`;
+                    fieldHeights[textarea.name] = height;
+                }
+            });
+            
+            // Update only the fieldHeights property
+            worksheet.fieldHeights = fieldHeights;
+            worksheet.updatedAt = new Date().toISOString();
+            
+            // Save to IndexedDB
+            await dbOperation('readwrite', (store) => {
+                return store.put(worksheet);
+            });
+            
+            // Sync to cloud if available
+            if (syncService && authService && await authService.isAuthenticated()) {
+                try {
+                    await syncService.syncWorksheetToCloud(worksheet);
+                } catch (error) {
+                    console.error('Error syncing heights to cloud:', error);
+                }
+            }
+        } catch (error) {
+            console.error('Error saving textarea heights:', error);
+        }
+    }, 500);
+}
+
 // Load worksheet into form for editing
 async function loadWorksheetIntoForm(id) {
     const worksheet = await getWorksheetById(id);
@@ -805,7 +889,7 @@ async function loadWorksheetIntoForm(id) {
 
         // Load all non-statement form fields
         Object.keys(worksheet).forEach(key => {
-            if (key === 'statements') return;
+            if (key === 'statements' || key === 'fieldHeights') return;
             const field = form.querySelector(`[name="${key}"]`);
             if (field) {
                 field.value = worksheet[key] || '';
@@ -831,6 +915,19 @@ async function loadWorksheetIntoForm(id) {
                 setValue(`turnaround${idx}`, statement.turnaround);
             });
         }
+
+        // Restore textarea heights
+        if (worksheet.fieldHeights) {
+            Object.keys(worksheet.fieldHeights).forEach(fieldName => {
+                const textarea = form.querySelector(`textarea[name="${fieldName}"]`);
+                if (textarea) {
+                    textarea.style.height = worksheet.fieldHeights[fieldName];
+                }
+            });
+        }
+
+        // Set up resize listeners for textareas
+        setupTextareaResizeListeners(form);
     }, 0);
 }
 
@@ -851,6 +948,16 @@ async function saveFormData() {
         if (field.closest('[data-statement-index]')) return;
         worksheetData[field.name] = field.value.trim();
     });
+
+    // Collect textarea heights
+    const fieldHeights = {};
+    form.querySelectorAll('textarea').forEach(textarea => {
+        if (textarea.name) {
+            const height = textarea.style.height || `${textarea.offsetHeight}px`;
+            fieldHeights[textarea.name] = height;
+        }
+    });
+    worksheetData.fieldHeights = fieldHeights;
 
     // Collect statements into a nested array
     const statements = [];
