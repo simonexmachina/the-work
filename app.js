@@ -1085,12 +1085,23 @@ async function handleSignOut() {
 }
 
 function updateAuthUI() {
-    if (!authService) return;
+    if (!authService) {
+        // If no auth service, hide loading and show auth section
+        const loadingSection = document.getElementById('loading-section');
+        const authSection = document.getElementById('auth-section');
+        if (loadingSection) loadingSection.classList.add('hidden');
+        if (authSection) authSection.classList.remove('hidden');
+        return;
+    }
 
     authService.getCurrentUser().then(user => {
+        const loadingSection = document.getElementById('loading-section');
         const authSection = document.getElementById('auth-section');
         const userSection = document.getElementById('user-section');
         const userEmail = document.getElementById('user-email');
+
+        // Hide loading section
+        if (loadingSection) loadingSection.classList.add('hidden');
 
         if (user && authSection && userSection) {
             // User is signed in
