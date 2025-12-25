@@ -52,8 +52,7 @@ describe('Integration Tests', () => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const objectStore = db.createObjectStore(STORE_NAME, {
-            keyPath: 'id',
-            autoIncrement: true
+            keyPath: 'id'
           });
           objectStore.createIndex('date', 'date', { unique: false });
         }
@@ -64,6 +63,7 @@ describe('Integration Tests', () => {
   describe('Complete Worksheet Flow', () => {
     it('should save and retrieve a complete worksheet', async () => {
       const worksheet = {
+        id: 'test-integration-1',
         situation: 'My partner was late',
         person: 'I am angry at Sarah because she doesn\'t respect my time',
         wantChange: 'I want Sarah to be on time and communicate better',
@@ -110,9 +110,9 @@ describe('Integration Tests', () => {
 
     it('should sort worksheets by date descending', async () => {
       const worksheets = [
-        { situation: 'Oldest', date: new Date('2023-01-01').toISOString() },
-        { situation: 'Newest', date: new Date('2023-12-31').toISOString() },
-        { situation: 'Middle', date: new Date('2023-06-15').toISOString() }
+        { id: 'test-integration-2', situation: 'Oldest', date: new Date('2023-01-01').toISOString() },
+        { id: 'test-integration-3', situation: 'Newest', date: new Date('2023-12-31').toISOString() },
+        { id: 'test-integration-4', situation: 'Middle', date: new Date('2023-06-15').toISOString() }
       ];
 
       // Save all
@@ -150,6 +150,7 @@ describe('Integration Tests', () => {
   describe('Data Validation', () => {
     it('should handle empty worksheet fields', async () => {
       const worksheet = {
+        id: 'test-integration-5',
         situation: '',
         person: '',
         date: new Date().toISOString()
@@ -178,6 +179,7 @@ describe('Integration Tests', () => {
     it('should handle long text fields', async () => {
       const longText = 'A'.repeat(10000);
       const worksheet = {
+        id: 'test-integration-6',
         situation: longText,
         date: new Date().toISOString()
       };

@@ -38,8 +38,7 @@ describe('IndexedDB Operations', () => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const objectStore = db.createObjectStore(STORE_NAME, {
-            keyPath: 'id',
-            autoIncrement: true
+            keyPath: 'id'
           });
           objectStore.createIndex('date', 'date', { unique: false });
         }
@@ -56,6 +55,7 @@ describe('IndexedDB Operations', () => {
 
   it('should save a worksheet', async () => {
     const worksheet = {
+      id: 'test-id-1',
       situation: 'Test situation',
       person: 'Test person',
       date: new Date().toISOString()
@@ -76,6 +76,7 @@ describe('IndexedDB Operations', () => {
 
   it('should retrieve a worksheet by ID', async () => {
     const worksheet = {
+      id: 'test-id-2',
       situation: 'Test situation',
       person: 'Test person',
       date: new Date().toISOString()
@@ -108,9 +109,9 @@ describe('IndexedDB Operations', () => {
 
   it('should retrieve all worksheets', async () => {
     const worksheets = [
-      { situation: 'Situation 1', date: new Date().toISOString() },
-      { situation: 'Situation 2', date: new Date().toISOString() },
-      { situation: 'Situation 3', date: new Date().toISOString() }
+      { id: 'test-id-3', situation: 'Situation 1', date: new Date().toISOString() },
+      { id: 'test-id-4', situation: 'Situation 2', date: new Date().toISOString() },
+      { id: 'test-id-5', situation: 'Situation 3', date: new Date().toISOString() }
     ];
 
     // Save all
@@ -139,6 +140,7 @@ describe('IndexedDB Operations', () => {
 
   it('should update an existing worksheet', async () => {
     const worksheet = {
+      id: 'test-id-6',
       situation: 'Original situation',
       date: new Date().toISOString()
     };
@@ -176,6 +178,7 @@ describe('IndexedDB Operations', () => {
 
   it('should delete a worksheet', async () => {
     const worksheet = {
+      id: 'test-id-7',
       situation: 'To be deleted',
       date: new Date().toISOString()
     };

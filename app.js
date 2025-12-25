@@ -24,7 +24,7 @@ function generateId() {
 
 // IndexedDB setup
 const DB_NAME = 'TheWorkDB';
-const DB_VERSION = 2; // Bumped for string ID migration
+const DB_VERSION = 2;
 const STORE_NAME = 'worksheets';
 
 let db = null;
@@ -99,70 +99,13 @@ function initDB() {
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            const transaction = event.target.transaction;
-            const oldVersion = event.oldVersion;
 
-            // Version 1: Initial schema with numeric auto-increment IDs
-            if (oldVersion < 1) {
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    const objectStore = db.createObjectStore(STORE_NAME, {
-                        keyPath: 'id',
-                        autoIncrement: true
-                    });
-                    objectStore.createIndex('date', 'date', { unique: false });
-                }
-            }
-
-            // Version 2: Migrate to string IDs
-            if (oldVersion < 2) {
-                console.log('Migrating database from version', oldVersion, 'to version 2...');
-                
-                // Get existing data - must complete synchronously within the transaction
-                const oldStore = transaction.objectStore(STORE_NAME);
-                const getAllRequest = oldStore.getAll();
-                
-                // Handle migration completion
-                getAllRequest.onsuccess = () => {
-                    const allData = getAllRequest.result;
-                    console.log('Found', allData.length, 'worksheets to migrate');
-
-                    // Delete old store
-                    db.deleteObjectStore(STORE_NAME);
-
-                    // Create new store with string IDs (no autoIncrement)
-                    const newStore = db.createObjectStore(STORE_NAME, {
-                        keyPath: 'id'
-                    });
-                    newStore.createIndex('date', 'date', { unique: false });
-
-                    // Migrate data - convert numeric IDs to strings or generate new UUIDs
-                    for (const worksheet of allData) {
-                        const migratedWorksheet = { ...worksheet };
-                        
-                        // If it has a firebaseId, use that as the new id
-                        if (migratedWorksheet.firebaseId) {
-                            migratedWorksheet.id = migratedWorksheet.firebaseId;
-                            delete migratedWorksheet.firebaseId;
-                        } else if (typeof migratedWorksheet.id === 'number') {
-                            // Convert numeric ID to prefixed string to avoid collisions
-                            migratedWorksheet.id = `local_${migratedWorksheet.id}`;
-                        } else if (!migratedWorksheet.id) {
-                            // Generate new UUID if somehow missing
-                            migratedWorksheet.id = generateId();
-                        }
-                        
-                        // Remove any remaining firebaseId fields
-                        delete migratedWorksheet.firebaseId;
-                        
-                        newStore.add(migratedWorksheet);
-                    }
-
-                    console.log('Migration complete! All worksheets now have string IDs.');
-                };
-                
-                getAllRequest.onerror = () => {
-                    console.error('Error loading worksheets for migration:', getAllRequest.error);
-                };
+            // Create object store if it doesn't exist
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const objectStore = db.createObjectStore(STORE_NAME, {
+                    keyPath: 'id'
+                });
+                objectStore.createIndex('date', 'date', { unique: false });
             }
         };
     });

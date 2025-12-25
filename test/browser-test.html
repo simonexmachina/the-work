@@ -49,8 +49,7 @@
                         const db = event.target.result;
                         if (!db.objectStoreNames.contains(STORE_NAME)) {
                             const objectStore = db.createObjectStore(STORE_NAME, {
-                                keyPath: 'id',
-                                autoIncrement: true
+                                keyPath: 'id'
                             });
                             objectStore.createIndex('date', 'date', { unique: false });
                         }
