@@ -25,6 +25,100 @@ export class FirebaseAuthService {
     this.auth = null;
     this.app = null;
     this.initialized = false;
+    this.currentUser = null;
+    this.listeners = [];
+  }
+
+  /**
+   * Add a listener for auth events
+   */
+  addListener(callback) {
+    this.listeners.push(callback);
+    return () => {
+      this.listeners = this.listeners.filter(cb => cb !== callback);
+    };
+  }
+
+  /**
+   * Remove a listener
+   */
+  removeListener(callback) {
+    this.listeners = this.listeners.filter(cb => cb !== callback);
+  }
+
+  /**
+   * Notify all listeners of an event
+   */
+  notifyListeners(event, data) {
+    this.listeners.forEach(callback => {
+      try {
+        callback(event, data);
+      } catch (error) {
+        console.error('Error in auth listener:', error);
+      }
+    });
+  }
+
+  /**
+   * Store auth data and notify listeners
+   */
+  storeAuth(user, token) {
+    this.currentUser = user;
+    if (user) {
+      localStorage.setItem('auth_user', JSON.stringify(user));
+      if (token) {
+        localStorage.setItem('auth_token', token);
+      }
+      this.notifyListeners('signin', user);
+    }
+  }
+
+  /**
+   * Get the current user
+   */
+  async getCurrentUser() {
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+
+    // Try to get from localStorage
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      try {
+        this.currentUser = JSON.parse(storedUser);
+        return this.currentUser;
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+      }
+    }
+
+    // Try to get from Firebase
+    if (this.auth && this.auth.currentUser) {
+      this.currentUser = {
+        uid: this.auth.currentUser.uid,
+        email: this.auth.currentUser.email,
+        displayName: this.auth.currentUser.displayName,
+      };
+      return this.currentUser;
+    }
+
+    return null;
+  }
+
+  /**
+   * Get the user ID
+   */
+  async getUserId() {
+    const user = await this.getCurrentUser();
+    return user ? user.uid : null;
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  async isAuthenticated() {
+    const user = await this.getCurrentUser();
+    return !!user;
   }
 
   /**
@@ -119,7 +213,7 @@ export class FirebaseAuthService {
     if (this.auth) {
       await firebaseSignOut(this.auth);
     }
-    await super.signOut();
+    // onAuthStateChanged will handle clearing the user and notifying listeners
   }
 
   /**
