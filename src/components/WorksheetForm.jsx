@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 
 export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification }) {
   const { id } = useParams();
@@ -74,6 +74,27 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
       }
     };
   }, [fieldHeights, id, saveHeights]);
+
+  // Block navigation when there are unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // Handle blocked navigation with confirm dialog
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      const proceed = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (proceed) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
 
   // Warn before closing/refreshing browser tab
   useEffect(() => {
@@ -247,14 +268,7 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
   );
 
   const handleBack = () => {
-    if (hasUnsavedChanges) {
-      const proceed = window.confirm(
-        'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.'
-      );
-      if (!proceed) {
-        return;
-      }
-    }
+    // Navigation blocking is now handled by useBlocker
     navigate('/');
   };
 
