@@ -14,6 +14,7 @@ let dbServiceInstance = null;
 export function useSync(authService, onSyncEvent) {
   const [syncService, setSyncService] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -23,7 +24,7 @@ export function useSync(authService, onSyncEvent) {
 
       try {
         if (!dbServiceInstance) {
-          dbServiceInstance = new FirebaseDbService();
+          dbServiceInstance = new FirebaseDbService(authService);
         }
 
         if (!syncServiceInstance) {
@@ -45,6 +46,14 @@ export function useSync(authService, onSyncEvent) {
                 setSyncing(true);
               } else if (data.status === 'complete') {
                 setSyncing(false);
+              }
+            }
+
+            // Handle auth errors
+            if (event === 'auth-error') {
+              console.warn('Authentication error detected in sync service');
+              if (mounted) {
+                setAuthError(data);
               }
             }
 
@@ -102,9 +111,15 @@ export function useSync(authService, onSyncEvent) {
     [syncService, authService]
   );
 
+  const clearAuthError = useCallback(() => {
+    setAuthError(null);
+  }, []);
+
   return {
     syncService,
     syncing,
+    authError,
+    clearAuthError,
     performSync,
     syncWorksheet,
   };

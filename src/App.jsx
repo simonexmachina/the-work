@@ -38,6 +38,16 @@ function App() {
       loadWorksheets();
     } else if (event === 'sync-error') {
       showNotification('Sync error: ' + (data?.message || 'Unknown error'), 'error');
+    } else if (event === 'auth-error') {
+      showNotification(
+        'Session expired. Please sign in again to continue syncing.',
+        'error',
+        10000
+      );
+      // Auto sign out to force re-authentication
+      setTimeout(() => {
+        handleSignOut();
+      }, 2000);
     } else if (
       event === 'worksheet-added' ||
       event === 'worksheet-updated' ||

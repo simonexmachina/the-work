@@ -35,6 +35,11 @@ export class SyncService {
     this.auth = authService;
     this.db = dbService;
 
+    // Pass auth service to db service for token refresh
+    if (this.db && this.db.setAuthService) {
+      this.db.setAuthService(authService);
+    }
+
     if (await this.auth.isAuthenticated()) {
       await this.startSync();
     }
@@ -175,10 +180,38 @@ export class SyncService {
       });
     } catch (error) {
       console.error('Error during initial sync:', error);
+      
+      // Check if it's an auth error
+      if (this.isAuthError(error)) {
+        console.warn('Initial sync failed due to authentication error');
+        this.notifyListeners('auth-error', error);
+        // Stop sync - user needs to re-authenticate
+        this.stopSync();
+      }
+      
       throw error;
     } finally {
       this.syncInProgress = false;
     }
+  }
+
+  /**
+   * Check if an error is an authentication error
+   */
+  isAuthError(error) {
+    if (!error) return false;
+    
+    const authErrorMessages = [
+      'Authentication expired',
+      'Please sign in again',
+      'permission-denied',
+      'unauthenticated'
+    ];
+
+    return authErrorMessages.some(msg => 
+      error.message?.includes(msg) || 
+      error.code?.includes(msg)
+    );
   }
 
   /**
@@ -209,7 +242,17 @@ export class SyncService {
       this.notifyListeners('worksheet-synced', worksheet);
     } catch (error) {
       console.error('Error syncing worksheet to cloud:', error);
-      this.pendingSyncs.push({ type: 'upload', data: worksheet });
+      
+      // Check if it's an auth error
+      if (this.isAuthError(error)) {
+        console.warn('Sync failed due to authentication error');
+        this.notifyListeners('auth-error', error);
+        // Don't queue auth errors - user needs to re-authenticate
+      } else {
+        // Queue other errors for retry
+        this.pendingSyncs.push({ type: 'upload', data: worksheet });
+      }
+      
       throw error;
     }
   }
@@ -280,6 +323,13 @@ export class SyncService {
       });
     } catch (error) {
       console.error('Error setting up real-time listeners:', error);
+      
+      // Check if it's an auth error
+      if (this.isAuthError(error)) {
+        console.warn('Real-time listener setup failed due to authentication error');
+        this.notifyListeners('auth-error', error);
+        this.stopSync();
+      }
     }
   }
 

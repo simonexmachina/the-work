@@ -25,9 +25,74 @@ import {
 import { getApps } from 'firebase/app';
 
 export class FirebaseDbService {
-  constructor() {
+  constructor(authService = null) {
     this.db = null;
     this.initialized = false;
+    this.authService = authService;
+  }
+
+  /**
+   * Set the auth service for token refresh handling
+   */
+  setAuthService(authService) {
+    this.authService = authService;
+  }
+
+  /**
+   * Check if an error is a permission/auth error
+   */
+  isPermissionError(error) {
+    if (!error) return false;
+    
+    const permissionErrors = [
+      'permission-denied',
+      'unauthenticated',
+      'PERMISSION_DENIED'
+    ];
+
+    return permissionErrors.some(code => 
+      error.code?.includes(code) || 
+      error.message?.includes(code)
+    );
+  }
+
+  /**
+   * Retry a database operation with token refresh if it fails due to permissions
+   */
+  async retryWithTokenRefresh(operation, operationName) {
+    try {
+      return await operation();
+    } catch (error) {
+      // If it's a permission error and we have auth service, try refreshing token
+      if (this.isPermissionError(error) && this.authService) {
+        console.warn(`${operationName} failed with permission error, attempting token refresh...`);
+        
+        try {
+          // Force refresh the token
+          const newToken = await this.authService.getToken(true);
+          
+          if (!newToken) {
+            console.error('Token refresh failed - user may need to sign in again');
+            throw new Error('Authentication expired. Please sign in again.');
+          }
+
+          // Retry the operation with fresh token
+          console.log(`Token refreshed, retrying ${operationName}...`);
+          return await operation();
+        } catch (retryError) {
+          console.error(`Retry after token refresh failed:`, retryError);
+          
+          // If still failing, it might be a real auth issue
+          if (this.isPermissionError(retryError)) {
+            throw new Error('Authentication expired. Please sign in again.');
+          }
+          throw retryError;
+        }
+      }
+      
+      // Not a permission error or no auth service - just throw it
+      throw error;
+    }
   }
 
   /**
@@ -55,7 +120,7 @@ export class FirebaseDbService {
   async getUserWorksheets(userId, includeDeleted = true) {
     await this.initialize();
 
-    try {
+    return this.retryWithTokenRefresh(async () => {
       const worksheetsRef = collection(this.db, 'worksheets');
       const q = query(worksheetsRef, where('userId', '==', userId), orderBy('updatedAt', 'desc'));
 
@@ -72,10 +137,7 @@ export class FirebaseDbService {
       }
 
       return worksheets;
-    } catch (error) {
-      console.error('Error getting user worksheets:', error);
-      throw error;
-    }
+    }, 'getUserWorksheets');
   }
 
   /**
@@ -87,7 +149,7 @@ export class FirebaseDbService {
   async saveWorksheet(userId, worksheet) {
     await this.initialize();
 
-    try {
+    return this.retryWithTokenRefresh(async () => {
       const worksheetData = {
         ...worksheet,
         userId,
@@ -110,10 +172,7 @@ export class FirebaseDbService {
         const docRef = await addDoc(worksheetsRef, data);
         return docRef.id;
       }
-    } catch (error) {
-      console.error('Error saving worksheet:', error);
-      throw error;
-    }
+    }, 'saveWorksheet');
   }
 
   /**
@@ -124,7 +183,7 @@ export class FirebaseDbService {
   async deleteWorksheet(userId, worksheetId) {
     await this.initialize();
 
-    try {
+    return this.retryWithTokenRefresh(async () => {
       // Verify the worksheet belongs to the user
       const docRef = doc(this.db, 'worksheets', worksheetId);
       const docSnap = await getDoc(docRef);
@@ -143,10 +202,7 @@ export class FirebaseDbService {
         },
         { merge: true }
       );
-    } catch (error) {
-      console.error('Error deleting worksheet:', error);
-      throw error;
-    }
+    }, 'deleteWorksheet');
   }
 
   /**

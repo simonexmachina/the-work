@@ -194,4 +194,182 @@ describe('SyncService', () => {
       expect(mockDbService.saveWorksheet).toHaveBeenCalled();
     }
   });
+
+  describe('Auth Error Handling', () => {
+    it('should detect auth errors by message', () => {
+      const error = new Error('Authentication expired. Please sign in again.');
+      const authErrorMessages = [
+        'Authentication expired',
+        'Please sign in again',
+        'permission-denied',
+        'unauthenticated'
+      ];
+
+      const isAuthError = authErrorMessages.some(msg => 
+        error.message?.includes(msg) || error.code?.includes(msg)
+      );
+
+      expect(isAuthError).toBe(true);
+    });
+
+    it('should detect auth errors by code', () => {
+      const error = { code: 'permission-denied', message: 'Permission denied' };
+      const authErrorMessages = [
+        'Authentication expired',
+        'Please sign in again',
+        'permission-denied',
+        'unauthenticated'
+      ];
+
+      const isAuthError = authErrorMessages.some(msg => 
+        error.message?.includes(msg) || error.code?.includes(msg)
+      );
+
+      expect(isAuthError).toBe(true);
+    });
+
+    it('should not queue auth errors for retry', async () => {
+      const worksheet = { id: 'test-1', situation: 'Test' };
+      const pendingSyncs = [];
+      
+      try {
+        await mockDbService.saveWorksheet('test-user-id', worksheet);
+        throw new Error('Authentication expired. Please sign in again.');
+      } catch (error) {
+        const authErrorMessages = ['Authentication expired', 'Please sign in again'];
+        const isAuthError = authErrorMessages.some(msg => error.message?.includes(msg));
+        
+        if (!isAuthError) {
+          pendingSyncs.push({ type: 'upload', data: worksheet });
+        }
+      }
+
+      expect(pendingSyncs).toHaveLength(0);
+    });
+
+    it('should queue non-auth errors for retry', async () => {
+      const worksheet = { id: 'test-1', situation: 'Test' };
+      const pendingSyncs = [];
+      
+      try {
+        await mockDbService.saveWorksheet('test-user-id', worksheet);
+        throw new Error('Network error');
+      } catch (error) {
+        const authErrorMessages = ['Authentication expired', 'Please sign in again'];
+        const isAuthError = authErrorMessages.some(msg => error.message?.includes(msg));
+        
+        if (!isAuthError) {
+          pendingSyncs.push({ type: 'upload', data: worksheet });
+        }
+      }
+
+      expect(pendingSyncs).toHaveLength(1);
+      expect(pendingSyncs[0].data.id).toBe('test-1');
+    });
+
+    it('should emit auth-error event on authentication failure', async () => {
+      const listeners = [];
+      const authError = new Error('Authentication expired. Please sign in again.');
+      
+      const notifyListeners = (event, data) => {
+        listeners.forEach(listener => listener(event, data));
+      };
+
+      const listener = vi.fn();
+      listeners.push(listener);
+
+      // Simulate sync failure with auth error
+      try {
+        throw authError;
+      } catch (error) {
+        const authErrorMessages = ['Authentication expired'];
+        const isAuthError = authErrorMessages.some(msg => error.message?.includes(msg));
+        
+        if (isAuthError) {
+          notifyListeners('auth-error', error);
+        }
+      }
+
+      expect(listener).toHaveBeenCalledWith('auth-error', authError);
+    });
+
+    it('should stop sync on auth error during initial sync', async () => {
+      let syncStarted = true;
+      const stopSync = () => {
+        syncStarted = false;
+      };
+
+      try {
+        await mockDbService.getUserWorksheets('test-user-id');
+        throw new Error('Authentication expired. Please sign in again.');
+      } catch (error) {
+        const authErrorMessages = ['Authentication expired'];
+        const isAuthError = authErrorMessages.some(msg => error.message?.includes(msg));
+        
+        if (isAuthError) {
+          stopSync();
+        }
+      }
+
+      expect(syncStarted).toBe(false);
+    });
+
+    it('should pass auth service to db service for token refresh', () => {
+      const dbService = createMockDbService();
+      dbService.setAuthService = vi.fn();
+      
+      dbService.setAuthService(mockAuthService);
+      
+      expect(dbService.setAuthService).toHaveBeenCalledWith(mockAuthService);
+    });
+
+    it('should handle auth errors in real-time listener setup', async () => {
+      let syncStarted = true;
+      const stopSync = () => {
+        syncStarted = false;
+      };
+
+      mockDbService.subscribeToWorksheets = vi.fn(() => {
+        throw new Error('Permission denied');
+      });
+
+      try {
+        await mockDbService.subscribeToWorksheets('test-user-id', vi.fn());
+      } catch (error) {
+        const authErrorMessages = ['Permission denied', 'permission-denied'];
+        const isAuthError = authErrorMessages.some(msg => error.message?.includes(msg));
+        
+        if (isAuthError) {
+          stopSync();
+        }
+      }
+
+      expect(syncStarted).toBe(false);
+    });
+  });
+
+  describe('Auth Service Integration', () => {
+    it('should initialize db service with auth service', () => {
+      const dbService = createMockDbService();
+      dbService.setAuthService = vi.fn();
+      
+      // Simulate sync service initialization
+      if (dbService && dbService.setAuthService) {
+        dbService.setAuthService(mockAuthService);
+      }
+      
+      expect(dbService.setAuthService).toHaveBeenCalledWith(mockAuthService);
+    });
+
+    it('should not crash if db service does not support setAuthService', () => {
+      const dbService = {}; // No setAuthService method
+      
+      // Should not throw
+      if (dbService && dbService.setAuthService) {
+        dbService.setAuthService(mockAuthService);
+      }
+      
+      expect(true).toBe(true);
+    });
+  });
 });

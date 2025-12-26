@@ -218,18 +218,77 @@ export class FirebaseAuthService {
 
   /**
    * Get the authentication token
+   * @param {boolean} forceRefresh - Force refresh the token
    */
-  async getToken() {
+  async getToken(forceRefresh = false) {
     if (!this.auth || !this.auth.currentUser) {
       return null;
     }
 
     try {
-      return await this.auth.currentUser.getIdToken();
+      return await this.auth.currentUser.getIdToken(forceRefresh);
     } catch (error) {
       console.error('Error getting token:', error);
+      // If token refresh fails, sign out the user
+      if (error.code === 'auth/user-token-expired' || 
+          error.code === 'auth/invalid-user-token') {
+        console.warn('Token expired or invalid, signing out user');
+        await this.signOut();
+      }
       return null;
     }
+  }
+
+  /**
+   * Validate if current token is still valid
+   * @returns {Promise<boolean>}
+   */
+  async validateToken() {
+    if (!this.auth || !this.auth.currentUser) {
+      return false;
+    }
+
+    try {
+      // Try to get a fresh token - this will fail if session is invalid
+      const token = await this.getToken(true);
+      return !!token;
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if an error is an authentication/permission error
+   * @param {Error} error
+   * @returns {boolean}
+   */
+  isAuthError(error) {
+    if (!error) return false;
+    
+    const authErrorCodes = [
+      'auth/user-token-expired',
+      'auth/invalid-user-token',
+      'auth/requires-recent-login',
+      'auth/user-not-found',
+      'permission-denied',
+      'unauthenticated'
+    ];
+
+    // Check error code
+    if (error.code && authErrorCodes.some(code => error.code.includes(code))) {
+      return true;
+    }
+
+    // Check error message
+    if (error.message && 
+        (error.message.includes('permission') || 
+         error.message.includes('unauthenticated') ||
+         error.message.includes('token'))) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
