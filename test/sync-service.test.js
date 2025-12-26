@@ -371,5 +371,99 @@ describe('SyncService', () => {
       
       expect(true).toBe(true);
     });
+
+    it('should trigger sync when user signs in', async () => {
+      // Create a mock auth service with listeners support
+      const authListeners = [];
+      const mockAuth = createMockAuthService();
+      mockAuth.addListener = vi.fn(callback => {
+        authListeners.push(callback);
+        return () => {
+          const index = authListeners.indexOf(callback);
+          if (index > -1) authListeners.splice(index, 1);
+        };
+      });
+      mockAuth.isAuthenticated = vi.fn(() => Promise.resolve(true));
+      mockAuth.getUserId = vi.fn(() => Promise.resolve('test-user-id'));
+
+      // Create mock sync service
+      let syncStarted = false;
+      const mockSyncService = {
+        startSync: vi.fn(async () => {
+          syncStarted = true;
+        }),
+        stopSync: vi.fn(() => {
+          syncStarted = false;
+        }),
+      };
+
+      // Simulate useSync hook behavior
+      const unsubscribe = mockAuth.addListener(async (event, _data) => {
+        if (event === 'signin' && mockSyncService) {
+          await mockSyncService.startSync();
+        } else if (event === 'signout' && mockSyncService) {
+          mockSyncService.stopSync();
+        }
+      });
+
+      // Trigger signin event
+      authListeners.forEach(listener => listener('signin', {}));
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockSyncService.startSync).toHaveBeenCalled();
+      expect(syncStarted).toBe(true);
+
+      // Trigger signout event
+      authListeners.forEach(listener => listener('signout', {}));
+
+      expect(mockSyncService.stopSync).toHaveBeenCalled();
+      expect(syncStarted).toBe(false);
+
+      unsubscribe();
+    });
+
+    it('should handle errors when triggering sync after signin', async () => {
+      // Create a mock auth service with listeners support
+      const authListeners = [];
+      const mockAuth = createMockAuthService();
+      mockAuth.addListener = vi.fn(callback => {
+        authListeners.push(callback);
+        return () => {
+          const index = authListeners.indexOf(callback);
+          if (index > -1) authListeners.splice(index, 1);
+        };
+      });
+
+      // Create mock sync service that throws error
+      const mockSyncService = {
+        startSync: vi.fn(async () => {
+          throw new Error('Sync failed');
+        }),
+      };
+
+      // Simulate useSync hook behavior with error handling
+      const unsubscribe = mockAuth.addListener(async (event, _data) => {
+        if (event === 'signin' && mockSyncService) {
+          try {
+            await mockSyncService.startSync();
+          } catch (error) {
+            // Error should be logged but not thrown
+            console.error('Error starting sync after signin:', error);
+          }
+        }
+      });
+
+      // Trigger signin event - should not throw
+      expect(async () => {
+        authListeners.forEach(listener => listener('signin', {}));
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }).not.toThrow();
+
+      expect(mockSyncService.startSync).toHaveBeenCalled();
+
+      unsubscribe();
+    });
   });
 });

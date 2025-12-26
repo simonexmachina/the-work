@@ -18,6 +18,7 @@ export function useSync(authService, onSyncEvent) {
 
   useEffect(() => {
     let mounted = true;
+    let authUnsubscribe = null;
 
     async function initSync() {
       if (!authService) return;
@@ -63,7 +64,37 @@ export function useSync(authService, onSyncEvent) {
           });
         }
 
+        // Listen for auth events to trigger sync on signin
+        authUnsubscribe = authService.addListener(async (event, _data) => {
+          if (event === 'signin' && syncServiceInstance && mounted) {
+            console.log('User signed in, triggering sync...');
+            try {
+              await syncServiceInstance.startSync();
+            } catch (error) {
+              console.error('Error starting sync after signin:', error);
+            }
+          } else if (event === 'signout' && syncServiceInstance) {
+            console.log('User signed out, stopping sync...');
+            syncServiceInstance.stopSync();
+          }
+        });
+
+        // Check if user is already authenticated (e.g., on page reload)
+        // and trigger sync if needed
         if (mounted) {
+          const isAuth = await authService.isAuthenticated();
+          if (isAuth && syncServiceInstance) {
+            console.log('User already authenticated, checking sync status...');
+            // Only start sync if not already started
+            if (!syncServiceInstance.syncStarted) {
+              console.log('Starting sync for authenticated user...');
+              try {
+                await syncServiceInstance.startSync();
+              } catch (error) {
+                console.error('Error starting sync for authenticated user:', error);
+              }
+            }
+          }
           setSyncService(syncServiceInstance);
         }
       } catch (error) {
@@ -75,6 +106,9 @@ export function useSync(authService, onSyncEvent) {
 
     return () => {
       mounted = false;
+      if (authUnsubscribe) {
+        authUnsubscribe();
+      }
     };
   }, [authService, onSyncEvent]);
 
