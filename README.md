@@ -31,7 +31,18 @@ Start the development server:
 npm run dev
 ```
 
-This will start http-server on port 8080 and automatically open your browser.
+This will start the Vite dev server on port 8080 and automatically open your browser.
+
+### Testing the Production Build
+
+To test the production build locally:
+
+```bash
+npm run build
+npm run preview
+```
+
+This will build the app and start a preview server at `http://localhost:4173/the-work/`.
 
 ### Running Tests
 
