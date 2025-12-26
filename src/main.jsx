@@ -3,12 +3,17 @@ import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import App from './App';
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: '*',
+      element: <App />,
+    },
+  ],
   {
-    path: '*',
-    element: <App />,
-  },
-]);
+    basename: '/the-work',
+  }
+);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
