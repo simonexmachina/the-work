@@ -36,6 +36,8 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
   // Track unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const isLoadingRef = useRef(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const blockerRef = useRef(null);
 
   // Debounced function to save textarea heights
   const saveHeights = useCallback(async () => {
@@ -78,23 +80,33 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
   // Block navigation when there are unsaved changes
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges &&
-      currentLocation.pathname !== nextLocation.pathname
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
   );
 
-  // Handle blocked navigation with confirm dialog
+  // Handle blocked navigation with custom dialog
   useEffect(() => {
     if (blocker.state === 'blocked') {
-      const proceed = window.confirm(
-        'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.'
-      );
-      if (proceed) {
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
+      console.log('Navigation blocked - showing confirm dialog');
+      blockerRef.current = blocker;
+      setShowConfirmDialog(true);
     }
   }, [blocker]);
+
+  const handleConfirmLeave = () => {
+    console.log('User confirmed - proceeding with navigation');
+    setShowConfirmDialog(false);
+    if (blockerRef.current) {
+      blockerRef.current.proceed();
+    }
+  };
+
+  const handleCancelLeave = () => {
+    console.log('User cancelled - staying on page');
+    setShowConfirmDialog(false);
+    if (blockerRef.current) {
+      blockerRef.current.reset();
+    }
+  };
 
   // Warn before closing/refreshing browser tab
   useEffect(() => {
@@ -401,6 +413,32 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
           />
         </section>
       </form>
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Unsaved Changes</h3>
+            <p className="text-gray-700 mb-6">
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelLeave}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-all duration-200"
+              >
+                Stay on Page
+              </button>
+              <button
+                onClick={handleConfirmLeave}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all duration-200"
+              >
+                Leave Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
