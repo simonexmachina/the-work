@@ -49,29 +49,25 @@ export class SyncService {
    * Start syncing - perform initial sync and set up listeners
    */
   async startSync() {
-    console.log('[startSync] Called');
     if (!(await this.auth.isAuthenticated())) {
-      console.warn('[startSync] Cannot start sync: user not authenticated');
+      console.warn('Cannot start sync: user not authenticated');
       return;
     }
 
     // Prevent multiple simultaneous sync starts
     if (this.syncStarted) {
-      console.log('[startSync] Sync already started, skipping duplicate startSync call');
+      console.log('Sync already started, skipping duplicate startSync call');
       return;
     }
 
     this.syncStarted = true;
-    console.log('[startSync] Notifying listeners: sync-started');
     this.notifyListeners('sync-started');
 
     try {
       await this.performInitialSync();
-      console.log('[startSync] performInitialSync completed');
       await this.setupRealtimeListeners();
-      console.log('[startSync] setupRealtimeListeners completed');
     } catch (error) {
-      console.error('[startSync] Error starting sync:', error);
+      console.error('Error starting sync:', error);
       this.syncStarted = false; // Reset on error so it can be retried
       this.notifyListeners('sync-error', error);
     }
@@ -94,23 +90,18 @@ export class SyncService {
    * Merges local and remote data, handling deletions via tombstones
    */
   async performInitialSync() {
-    console.log('[performInitialSync] Starting...');
     if (this.syncInProgress) {
-      console.log('[performInitialSync] Sync already in progress, skipping...');
+      console.log('Sync already in progress, skipping...');
       return;
     }
 
     this.syncInProgress = true;
-    console.log('[performInitialSync] Notifying listeners: sync-progress initial-sync');
     this.notifyListeners('sync-progress', { status: 'initial-sync' });
 
     try {
       const userId = await this.auth.getUserId();
-      console.log('[performInitialSync] User ID:', userId);
       const localWorksheets = await this.getAllLocalWorksheets();
-      console.log('[performInitialSync] Local worksheets:', localWorksheets.length);
       const remoteWorksheets = await this.db.getUserWorksheets(userId); // includes deleted
-      console.log('[performInitialSync] Remote worksheets:', remoteWorksheets.length);
 
       // Create maps for easier lookup by ID
       const localMap = new Map(localWorksheets.map(w => [w.id, w]));
@@ -181,8 +172,6 @@ export class SyncService {
         await this.deleteLocalWorksheet(id);
       }
 
-      console.log('[performInitialSync] Sync complete - uploaded:', toUpload.length, 'downloaded:', toDownload.length, 'deleted:', toDeleteLocally.length);
-      console.log('[performInitialSync] Notifying listeners: sync-progress complete');
       this.notifyListeners('sync-progress', {
         status: 'complete',
         uploaded: toUpload.length,
@@ -190,7 +179,7 @@ export class SyncService {
         deleted: toDeleteLocally.length,
       });
     } catch (error) {
-      console.error('[performInitialSync] Error during initial sync:', error);
+      console.error('Error during initial sync:', error);
       
       // Check if it's an auth error
       if (this.isAuthError(error)) {
