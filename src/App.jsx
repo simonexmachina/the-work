@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
 import { LoadingSection } from './components/AuthSection';
 import { AuthModal } from './components/AuthModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import { NotificationContainer } from './components/Notification';
 import { ListView } from './components/ListView';
 import { WorksheetForm } from './components/WorksheetForm';
@@ -12,8 +13,11 @@ import { useDatabase } from './hooks/useDatabase';
 import { useSync } from './hooks/useSync';
 import { useNotification } from './hooks/useNotification';
 
+// Updated to include user profile modal
 function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const {
     user,
     loading: authLoading,
@@ -30,8 +34,10 @@ function App() {
   // Sync service with event handling
   const handleSyncEvent = (event, data) => {
     if (event === 'sync-started') {
+      setIsSyncing(true);
       showNotification('Sync started', 'success', 3000);
     } else if (event === 'sync-progress' && data.status === 'complete') {
+      setIsSyncing(false);
       const deletedMsg = data.deleted ? `, ${data.deleted} deleted` : '';
       showNotification(
         `Sync complete: ${data.uploaded || 0} uploaded, ${data.downloaded || 0} downloaded${deletedMsg}`,
@@ -39,8 +45,10 @@ function App() {
       );
       loadWorksheets();
     } else if (event === 'sync-error') {
+      setIsSyncing(false);
       showNotification('Sync error: ' + (data?.message || 'Unknown error'), 'error');
     } else if (event === 'auth-error') {
+      setIsSyncing(false);
       showNotification(
         'Session expired. Please sign in again to continue syncing.',
         'error',
@@ -101,19 +109,21 @@ function App() {
     }
 
     try {
+      setIsSyncing(true);
       showNotification('Syncing...', 'info', 2000);
       await performSync();
     } catch (error) {
+      setIsSyncing(false);
       showNotification('Sync failed: ' + error.message, 'error');
     }
   };
 
   const handleProfileClick = () => {
-    if (!isAuthenticated) {
+    if (isAuthenticated) {
+      setIsProfileModalOpen(true);
+    } else {
       setIsAuthModalOpen(true);
     }
-    // If authenticated, the button shows user info tooltip
-    // Could add a user menu here in the future
   };
 
   // Handle save with sync
@@ -163,7 +173,7 @@ function App() {
         user={user}
         onProfileClick={handleProfileClick}
         onSyncClick={handleManualSync}
-        onSignOutClick={handleSignOut}
+        isSyncing={isSyncing}
       />
 
       {/* Notification Container */}
@@ -175,6 +185,14 @@ function App() {
         onClose={() => setIsAuthModalOpen(false)}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
+      />
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        onSignOut={handleSignOut}
       />
 
       {/* Loading Section (only show if loading) */}
