@@ -61,7 +61,7 @@ function App() {
     }
   };
 
-  const { performSync } = useSync(authService, handleSyncEvent);
+  const { performSync, syncWorksheet } = useSync(authService, handleSyncEvent);
 
   // Handle auth actions with notifications
   const handleSignUp = async (email, password) => {
@@ -108,14 +108,41 @@ function App() {
   // Handle save with sync
   const handleSaveWorksheet = async worksheetData => {
     const id = await saveWorksheet(worksheetData);
-    // Sync will be handled by the sync service automatically
+    
+    // Sync to Firebase if authenticated
+    if (isAuthenticated) {
+      try {
+        const savedWorksheet = await getWorksheet(id);
+        await syncWorksheet(savedWorksheet);
+      } catch (error) {
+        console.error('Error syncing saved worksheet:', error);
+        // Don't throw - local save already succeeded
+      }
+    }
+    
     return id;
   };
 
   // Handle delete with sync
   const handleDeleteWorksheet = async id => {
+    // Get the worksheet before deleting to sync the deletion
+    const worksheet = await getWorksheet(id);
+    
     await deleteWorksheet(id);
-    // Sync will be handled by the sync service automatically
+    
+    // Sync deletion to Firebase if authenticated
+    if (isAuthenticated && worksheet) {
+      try {
+        // Get the updated worksheet with deletion tombstone
+        const deletedWorksheet = await getWorksheet(id);
+        if (deletedWorksheet) {
+          await syncWorksheet(deletedWorksheet);
+        }
+      } catch (error) {
+        console.error('Error syncing deleted worksheet:', error);
+        // Don't throw - local delete already succeeded
+      }
+    }
   };
 
   return (
