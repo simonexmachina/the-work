@@ -33,10 +33,16 @@ function App() {
 
   // Sync service with event handling
   const handleSyncEvent = (event, data) => {
+    console.log('[handleSyncEvent]', event, data);
     if (event === 'sync-started') {
+      console.log('[handleSyncEvent] Setting isSyncing to true');
       setIsSyncing(true);
       showNotification('Sync started', 'success', 3000);
-    } else if (event === 'sync-progress' && data.status === 'complete') {
+    } else if (event === 'sync-progress' && data?.status === 'initial-sync') {
+      console.log('[handleSyncEvent] Sync in progress - initial sync');
+      setIsSyncing(true);
+    } else if (event === 'sync-progress' && data?.status === 'complete') {
+      console.log('[handleSyncEvent] Sync complete, setting isSyncing to false');
       setIsSyncing(false);
       const deletedMsg = data.deleted ? `, ${data.deleted} deleted` : '';
       showNotification(
@@ -45,9 +51,11 @@ function App() {
       );
       loadWorksheets();
     } else if (event === 'sync-error') {
+      console.log('[handleSyncEvent] Sync error, setting isSyncing to false');
       setIsSyncing(false);
       showNotification('Sync error: ' + (data?.message || 'Unknown error'), 'error');
     } else if (event === 'auth-error') {
+      console.log('[handleSyncEvent] Auth error, setting isSyncing to false');
       setIsSyncing(false);
       showNotification(
         'Session expired. Please sign in again to continue syncing.',

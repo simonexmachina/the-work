@@ -16,6 +16,26 @@
                 opacity: 1;
             }
         }
+        
+        @keyframes smoothSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* Smooth spinning animation */
+        .sync-icon {
+            display: inline-block;
+            transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+            will-change: transform;
+        }
+        
+        .sync-icon.spinning {
+            animation: smoothSpin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
