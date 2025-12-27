@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ConfirmModal } from './ConfirmModal';
 
 export function WorksheetDetail({ getWorksheet, deleteWorksheet, showNotification }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [worksheet, setWorksheet] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     async function loadWorksheet() {
@@ -31,15 +33,12 @@ export function WorksheetDetail({ getWorksheet, deleteWorksheet, showNotificatio
     navigate(`/worksheet/${id}`);
   };
 
-  const handleDelete = async () => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete this worksheet? This action cannot be undone.'
-      )
-    ) {
-      return;
-    }
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    setShowDeleteConfirm(false);
     try {
       await deleteWorksheet(id);
       showNotification('Worksheet deleted successfully!', 'success');
@@ -48,6 +47,10 @@ export function WorksheetDetail({ getWorksheet, deleteWorksheet, showNotificatio
       console.error('Error deleting worksheet:', error);
       showNotification('Error deleting worksheet. Please try again.', 'error');
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   const handleBack = () => {
@@ -132,6 +135,16 @@ export function WorksheetDetail({ getWorksheet, deleteWorksheet, showNotificatio
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
         <p className="text-gray-500 text-sm">Created: {date.toLocaleString()}</p>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Worksheet"
+        message="Are you sure you want to delete this worksheet? This action cannot be undone."
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

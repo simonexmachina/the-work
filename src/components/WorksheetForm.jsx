@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
+import { ConfirmModal } from './ConfirmModal';
 
 export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification }) {
   const { id } = useParams();
@@ -414,31 +415,15 @@ export function WorksheetForm({ getWorksheet, saveWorksheet, showNotification })
         </section>
       </form>
 
-      {/* Confirmation Dialog */}
-      {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Unsaved Changes</h3>
-            <p className="text-gray-700 mb-6">
-              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={handleCancelLeave}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-all duration-200"
-              >
-                Stay on Page
-              </button>
-              <button
-                onClick={handleConfirmLeave}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all duration-200"
-              >
-                Leave Anyway
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showConfirmDialog}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Are you sure you want to leave? Your changes will be lost."
+        onConfirm={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+        confirmText="Leave Anyway"
+        cancelText="Stay on Page"
+      />
     </div>
   );
 }
