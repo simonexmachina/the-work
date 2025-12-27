@@ -14,10 +14,15 @@ export class SyncService {
     this.listeners = [];
 
     // Listen for online/offline events
-    window.addEventListener('online', () => {
+    window.addEventListener('online', async () => {
       this.isOnline = true;
       this.notifyListeners('online');
       this.processPendingSyncs();
+      
+      // If sync was previously started but couldn't complete due to offline, retry
+      if (this.auth && await this.auth.isAuthenticated() && !this.syncStarted) {
+        await this.startSync();
+      }
     });
 
     window.addEventListener('offline', () => {
@@ -51,6 +56,13 @@ export class SyncService {
   async startSync() {
     if (!(await this.auth.isAuthenticated())) {
       console.warn('Cannot start sync: user not authenticated');
+      return;
+    }
+
+    // Check if online
+    if (!this.isOnline) {
+      console.log('Cannot start sync: offline. Will sync when connection is restored.');
+      this.notifyListeners('offline');
       return;
     }
 
@@ -92,6 +104,13 @@ export class SyncService {
   async performInitialSync() {
     if (this.syncInProgress) {
       console.log('Sync already in progress, skipping...');
+      return;
+    }
+
+    // Check if online before attempting sync
+    if (!this.isOnline) {
+      console.log('Cannot sync: offline');
+      this.notifyListeners('sync-error', { message: 'Cannot sync while offline' });
       return;
     }
 
@@ -172,12 +191,16 @@ export class SyncService {
         await this.deleteLocalWorksheet(id);
       }
 
-      this.notifyListeners('sync-progress', {
-        status: 'complete',
-        uploaded: toUpload.length,
-        downloaded: toDownload.length,
-        deleted: toDeleteLocally.length,
-      });
+      // Only notify sync complete if we're actually online
+      // Firebase may return cached data when offline, but we don't want to show "sync complete"
+      if (this.isOnline) {
+        this.notifyListeners('sync-progress', {
+          status: 'complete',
+          uploaded: toUpload.length,
+          downloaded: toDownload.length,
+          deleted: toDeleteLocally.length,
+        });
+      }
     } catch (error) {
       console.error('Error during initial sync:', error);
       

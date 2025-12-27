@@ -48,7 +48,11 @@ function App() {
       loadWorksheets();
     } else if (event === 'sync-error') {
       setIsSyncing(false);
-      showNotification('Sync error: ' + (data?.message || 'Unknown error'), 'error');
+      // Don't show error notification if it's just an offline error
+      // The 'offline' event will handle that
+      if (data?.message !== 'Cannot sync while offline') {
+        showNotification('Sync error: ' + (data?.message || 'Unknown error'), 'error');
+      }
     } else if (event === 'auth-error') {
       setIsSyncing(false);
       showNotification(
