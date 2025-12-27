@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export function NotificationContainer({ notifications, onRemove }) {
   if (!notifications || notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-md">
+    <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-md">
       {notifications.map(notification => (
         <Notification
           key={notification.id}
@@ -17,6 +17,15 @@ export function NotificationContainer({ notifications, onRemove }) {
 }
 
 function Notification({ message, type = 'success', onRemove }) {
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleRemove = () => {
+    setIsExiting(true);
+    // Wait for animation to complete before actually removing
+    setTimeout(() => {
+      onRemove();
+    }, 300); // Match the animation duration
+  };
   const bgColor =
     type === 'success'
       ? 'bg-green-50 border-green-200 text-green-800'
@@ -64,13 +73,20 @@ function Notification({ message, type = 'success', onRemove }) {
 
   return (
     <div
-      className={`${bgColor} border rounded-lg shadow-lg p-4 flex items-start gap-3 animate-slide-in`}
+      className={`${bgColor} border rounded-lg shadow-lg p-4 flex items-start gap-3 transition-all duration-300 ${
+        isExiting 
+          ? 'translate-y-full opacity-0' 
+          : 'translate-y-0 opacity-100 animate-slide-up'
+      }`}
+      style={{
+        animation: isExiting ? 'none' : 'slideUp 0.3s ease-out'
+      }}
     >
       <div className={`${iconColor} flex-shrink-0 mt-0.5`}>{icon}</div>
       <div className="flex-1">
         <p className="font-medium">{message}</p>
       </div>
-      <button onClick={onRemove} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+      <button onClick={handleRemove} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
