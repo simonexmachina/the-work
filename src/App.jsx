@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
-import { LoadingSection, AuthSection, UserSection } from './components/AuthSection';
+import { LoadingSection } from './components/AuthSection';
+import { AuthModal } from './components/AuthModal';
 import { NotificationContainer } from './components/Notification';
 import { ListView } from './components/ListView';
 import { WorksheetForm } from './components/WorksheetForm';
@@ -12,6 +13,7 @@ import { useSync } from './hooks/useSync';
 import { useNotification } from './hooks/useNotification';
 
 function App() {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const {
     user,
     loading: authLoading,
@@ -94,6 +96,7 @@ function App() {
   const handleManualSync = async () => {
     if (!isAuthenticated) {
       showNotification('Please sign in to sync', 'warning');
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -103,6 +106,14 @@ function App() {
     } catch (error) {
       showNotification('Sync failed: ' + error.message, 'error');
     }
+  };
+
+  const handleProfileClick = () => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+    }
+    // If authenticated, the button shows user info tooltip
+    // Could add a user menu here in the future
   };
 
   // Handle save with sync
@@ -147,19 +158,27 @@ function App() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <Header />
+      <Header
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onProfileClick={handleProfileClick}
+        onSyncClick={handleManualSync}
+        onSignOutClick={handleSignOut}
+      />
 
       {/* Notification Container */}
       <NotificationContainer notifications={notifications} onRemove={removeNotification} />
 
-      {/* Auth Section */}
-      {authLoading ? (
-        <LoadingSection />
-      ) : isAuthenticated ? (
-        <UserSection user={user} onSignOut={handleSignOut} onSync={handleManualSync} />
-      ) : (
-        <AuthSection onSignIn={handleSignIn} onSignUp={handleSignUp} />
-      )}
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+      />
+
+      {/* Loading Section (only show if loading) */}
+      {authLoading && <LoadingSection />}
 
       {/* Main Content */}
       <main>
